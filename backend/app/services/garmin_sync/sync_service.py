@@ -10,7 +10,7 @@ from app.models.garmin_credentials import GarminCredentials
 from app.models.sync_job import SyncJob
 from app.models.user import User
 from app.services.garmin_sync import adapter, mapper
-from app.services.xp_engine import calculator
+from app.services.xp_engine import calculator, skills
 
 SYNC_OVERLAP = timedelta(hours=2)
 DEFAULT_LOOKBACK = timedelta(days=30)
@@ -67,6 +67,16 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
 
         for event in calculator.process_activity(db, user, activity):
             level_up_events.append({"type": "main", "from_level": event.from_level, "to_level": event.to_level})
+
+        for skill_event in await skills.process_activity_skills(db, user, activity):
+            level_up_events.append(
+                {
+                    "type": "skill",
+                    "skill_key": skill_event.skill_key,
+                    "from_level": skill_event.from_level,
+                    "to_level": skill_event.to_level,
+                }
+            )
 
     creds.status = "connected"
     creds.last_sync_success_at = datetime.now(timezone.utc)

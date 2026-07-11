@@ -3,11 +3,13 @@ import './App.css'
 import { API_BASE_URL, getCurrentUser, login, type UserResponse } from './api/client'
 import GarminPanel from './components/GarminPanel'
 import LoginForm from './components/LoginForm'
+import SkillsPanel from './components/SkillsPanel'
 
 function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [user, setUser] = useState<UserResponse | null>(null)
+  const [skillsRefreshKey, setSkillsRefreshKey] = useState(0)
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/health`)
@@ -28,9 +30,10 @@ function App() {
     setUser(null)
   }
 
-  const refreshUser = () => {
+  const handleSyncComplete = () => {
     if (!accessToken) return
     getCurrentUser(accessToken).then(setUser).catch(() => {})
+    setSkillsRefreshKey((key) => key + 1)
   }
 
   return (
@@ -70,7 +73,9 @@ function App() {
             </p>
           </div>
 
-          <GarminPanel accessToken={accessToken} onSyncComplete={refreshUser} />
+          <SkillsPanel accessToken={accessToken} refreshKey={skillsRefreshKey} />
+
+          <GarminPanel accessToken={accessToken} onSyncComplete={handleSyncComplete} />
         </div>
       ) : (
         <LoginForm onSubmit={handleLogin} />

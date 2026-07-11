@@ -41,6 +41,15 @@ export interface SyncJobResponse {
   finished_at: string | null
 }
 
+export interface SkillProgressResponse {
+  key: string
+  display_name: string
+  level: number
+  xp_into_level: number
+  xp_to_next_level_snapshot: number
+  activities_this_level: number
+}
+
 class ApiError extends Error {
   status: number
 
@@ -124,4 +133,8 @@ export async function triggerSync(accessToken: string): Promise<SyncJobResponse>
 
 export async function getSyncJob(accessToken: string, jobId: string): Promise<SyncJobResponse> {
   return authedRequest<SyncJobResponse>(`/api/v1/sync/${jobId}`, accessToken)
+}
+
+export async function getSkills(accessToken: string): Promise<SkillProgressResponse[]> {
+  return authedRequest<SkillProgressResponse[]>('/api/v1/skills', accessToken)
 }

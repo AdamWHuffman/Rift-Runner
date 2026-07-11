@@ -46,3 +46,29 @@
   background: linear-gradient(90deg, #6ee7b7, #34d399);
   transition: width 0.4s ease;
 }
+
+.skills-panel {
+  width: 280px;
+  margin: 16px 0;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.skill-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #33333333;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.xp-bar-small {
+  height: 8px;
+  border-radius: 4px;
+}

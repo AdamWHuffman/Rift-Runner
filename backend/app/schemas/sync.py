@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class LevelUpEventResponse(BaseModel):
     type: str
+    skill_key: str | None = None
     from_level: int
     to_level: int
 

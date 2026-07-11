@@ -1,0 +1,10 @@
+# Skill catalog. Adding a new skill: add a row here, run seed_config.py, and
+# register a calculator function in app/services/xp_engine/skills.py.
+- key: speed
+  display_name: Speed
+- key: endurance
+  display_name: Endurance
+- key: health
+  display_name: Health
+- key: consistency
+  display_name: Consistency

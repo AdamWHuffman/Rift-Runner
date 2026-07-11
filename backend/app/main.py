@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.routers import auth as auth_router
 from app.api.v1.routers import garmin as garmin_router
+from app.api.v1.routers import skills as skills_router
 from app.api.v1.routers import sync as sync_router
 from app.core.config import get_settings
 
@@ -33,6 +34,7 @@ app.add_middleware(
 
 app.include_router(auth_router.router, prefix="/api/v1")
 app.include_router(garmin_router.router, prefix="/api/v1")
+app.include_router(skills_router.router, prefix="/api/v1")
 app.include_router(sync_router.router, prefix="/api/v1")
 
 
