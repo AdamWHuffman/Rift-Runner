@@ -68,9 +68,9 @@ base_xp = trimp * 10
 ```
 (fallback: `calories * 0.5 + duration_minutes * 1.5` when no HR data). Multiplicative bonuses: elevation (+up to 50%), heat index (not yet wired, Phase 8), course-difficulty (stubbed 1.0, Phase 5), PR bonus (+50% flat, currently sourced from Garmin's own PR flag), goal alignment (stubbed 1.0, Phase 6).
 
-### Core Algorithm: Skill System — not yet built (Phase 4)
+### Core Algorithm: Skill System — ✅ built (Speed/Endurance/Health/Consistency), see Progress Log
 
-Planned: Speed, Endurance, Health, Consistency, Explorer — each config-driven, using the same leveling primitive with its own independent EMA.
+Explorer deferred to Phase 5 (needs course/region discovery to exist first).
 
 ### Core Algorithm: Course Leveling — not yet built (Phase 5)
 
@@ -99,8 +99,8 @@ Two-tier: Tier 1 declarative rules (`rule_configs` table, not yet built) for sim
 2. Garmin ingestion — ✅ complete
 2.5. Manual import fallback — ⬜ not started
 3. Core XP & main leveling — ✅ complete
-4. Skills — ⬜ not started (next up)
-5. Courses & Regions — ⬜ not started
+4. Skills — ✅ complete (Speed/Endurance/Health/Consistency; Explorer deferred to Phase 5)
+5. Courses & Regions — ⬜ not started (next up)
 6. Goals — ⬜ not started
 7. Gamified frontend polish — ⬜ not started
 8. Auto-sync-on-load + weather — ⬜ not started (basic sync-trigger exists; the full "always sync on open" polish is pending)
@@ -143,6 +143,13 @@ Per user direction ("factor in pretty much every stat you can pull from the Garm
 
 Frontend: added a basic (intentionally unstyled — Phase 7 will make it pretty) level/XP display to `App.tsx`, with a refresh callback wired from `GarminPanel` so it updates after a sync completes.
 
+### Phase 4 — Skills ✅ complete & verified
+`skill_formulas.py` (pure, ratio-based XP for Speed/Endurance/Health/Consistency — each compares the current activity to the user's own recent baseline, with a floor so an off day still earns something and a cap so no outlier trivializes the skill), `skills.py` (Tier-2 registered-function orchestration, `SKILL_CALCULATORS` dict, reuses `xp_engine.leveling` verbatim with each skill's own independent `SkillProgress`/EMA). Speed/Endurance/Health compare within the same activity type; Consistency spans all types. `skills`/`skill_progress` tables, `config_data/skills.yaml` + `seed_config.py` for the catalog, `GET /api/v1/skills` exposes progress (defaulting missing skills to a sensible level-1 entry). Wired into `sync_service` alongside main XP.
+
+**Explorer skill deliberately deferred to Phase 5** — it needs course/region discovery to exist before there's anything for it to detect.
+
+266 backend tests total, all passing. Verified against the real docker compose stack: re-synced the connected account's real activity through the full pipeline — all 4 skills correctly earned the 150 XP baseline (no prior history yet), confirmed via direct DB inspection and the real `GET /api/v1/skills` endpoint. Frontend `SkillsPanel` (level + XP bar grid) confirmed rendering correctly via a real Playwright screenshot.
+
 ### Infrastructure / tooling notes worth remembering
 - **Docker Desktop + WSL2 hot-reload gotcha**: Vite's dev server (and possibly uvicorn's `--reload`) doesn't reliably detect file edits made from the Windows side of the bind mount, even though the mount itself is live/correct. A `usePolling`/`WATCHFILES_FORCE_POLLING` fix was attempted but didn't fully resolve it for this project's Rolldown-based Vite. **Restart the frontend container after frontend edits** before verifying, rather than trusting hot-reload.
 - All shell commands in this project are run through WSL Ubuntu (`wsl -d Ubuntu -- bash ...`), per user preference for Linux tooling over native PowerShell. Nested-quote commands are unreliable through the PowerShell→wsl.exe→bash chain (Windows argv parsing mangles embedded double quotes) — writing throwaway `.sh` scripts to the scratchpad directory and executing them by path is the reliable pattern.
@@ -150,13 +157,12 @@ Frontend: added a basic (intentionally unstyled — Phase 7 will make it pretty)
 
 ## Current State (as of last update)
 - Stack running via `docker compose up`: postgres, redis, backend (FastAPI + arq worker), frontend (Vite/React/TS) — all healthy.
-- Real Garmin account connected (with MFA), real activity synced and generating real XP/leveling data (currently Level 2).
-- 245 backend tests passing.
-- Frontend shows: login, level/XP bar, Garmin connect/sync panel. No real visual design yet (expected — that's Phase 7).
+- Real Garmin account connected (with MFA), real activity synced and generating real XP/leveling/skill data (currently main Level 2; all 4 skills at Level 1 with 150/400 XP).
+- 266 backend tests passing.
+- Frontend shows: login, level/XP bar, skills grid, Garmin connect/sync panel. No real visual design yet (expected — that's Phase 7).
 
 ## What's Next
-Two open items, order not yet decided:
-- **Phase 4** — Skills (Speed, Endurance, Health, Consistency, Explorer), reusing the Phase 3 leveling primitive
-- **Phase 2.5** — Manual FIT/GPX import fallback (insurance against Garmin breaking again)
+- **Phase 5** — Courses & Regions (route matching, personalized course difficulty/mastery, Home Base + region naming). Also unlocks the deferred Explorer skill.
+- **Phase 2.5** — Manual FIT/GPX import fallback (insurance against Garmin breaking again) — still open, order relative to Phase 5 not yet decided.
 
 Then Phases 5 (Courses & Regions), 6 (Goals), 7 (gamified frontend polish), 8 (auto-sync-on-load + weather), 9 (cloud-deploy prep) per the original roadmap above.
