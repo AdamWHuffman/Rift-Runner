@@ -1,7 +1,8 @@
 import uuid
 
 import jwt
-from fastapi import Depends, HTTPException, status
+from arq import ArqRedis
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,10 @@ from app.db.session import get_db
 from app.models.user import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def get_arq_pool(request: Request) -> ArqRedis:
+    return request.app.state.arq_pool
 
 
 async def get_current_user(

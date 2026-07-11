@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { API_BASE_URL, getCurrentUser, login, type UserResponse } from './api/client'
+import GarminPanel from './components/GarminPanel'
 import LoginForm from './components/LoginForm'
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
           <button type="button" onClick={handleLogout}>
             Log out
           </button>
+          <GarminPanel accessToken={accessToken} />
         </div>
       ) : (
         <LoginForm onSubmit={handleLogin} />

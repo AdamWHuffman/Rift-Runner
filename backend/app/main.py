@@ -1,12 +1,27 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
+from arq import create_pool
+from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.routers import auth as auth_router
+from app.api.v1.routers import garmin as garmin_router
+from app.api.v1.routers import sync as sync_router
 from app.core.config import get_settings
 
 settings = get_settings()
 
-app = FastAPI(title="The Quest for Health API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    app.state.arq_pool = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+    yield
+    await app.state.arq_pool.close()
+
+
+app = FastAPI(title="The Quest for Health API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,6 +32,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router.router, prefix="/api/v1")
+app.include_router(garmin_router.router, prefix="/api/v1")
+app.include_router(sync_router.router, prefix="/api/v1")
 
 
 @app.get("/health")
