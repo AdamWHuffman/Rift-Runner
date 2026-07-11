@@ -13,8 +13,13 @@ async def shutdown(ctx: dict) -> None:
     pass
 
 
+async def ping(ctx: dict) -> str:
+    """Placeholder task so arq has at least one registered function until Phase 2 adds real jobs."""
+    return "pong"
+
+
 class WorkerSettings:
-    functions: list = []
+    functions = [ping]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
