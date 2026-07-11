@@ -1,35 +1,43 @@
-from pathlib import Path
-
 import pytest
 
 from app.services.garmin_sync import adapter
 
 
-class FakeGarth:
-    def __init__(self, mfa_flow: bool) -> None:
-        self.mfa_flow = mfa_flow
+class FakeClient:
+    def __init__(self) -> None:
+        self.loaded_tokens: str | None = None
 
-    def login(self, email: str, password: str, return_on_mfa: bool = False) -> tuple[str, object]:
-        if self.mfa_flow:
-            return "needs_mfa", {"context": "fake"}
-        return "success", None
+    def dumps(self) -> str:
+        return '{"di_token": "fake-token"}'
 
-    def resume_login(self, mfa_context: object, code: str) -> None:
-        if code != "123456":
-            raise Exception("invalid MFA code")
-
-    def dump(self, directory: str) -> None:
-        Path(directory, "oauth1_token.json").write_text('{"token": "oauth1"}')
-        Path(directory, "oauth2_token.json").write_text('{"token": "oauth2"}')
+    def loads(self, tokenstore: str) -> None:
+        if tokenstore == "invalid":
+            raise Exception("bad tokens")
+        self.loaded_tokens = tokenstore
 
 
 class FakeGarmin:
     def __init__(self, mfa_flow: bool = False) -> None:
-        self.garth = FakeGarth(mfa_flow=mfa_flow)
+        self.client = FakeClient()
+        self.mfa_flow = mfa_flow
+
+    def login(self) -> tuple[str | None, None]:
+        if self.mfa_flow:
+            return "needs_mfa", None
+        return None, None
+
+    def resume_login(self, client_state: object, mfa_code: str) -> tuple[None, None]:
+        if mfa_code != "123456":
+            raise Exception("invalid MFA code")
+        return None, None
 
 
 def _fake_garmin_factory(mfa_flow: bool):
-    def factory(email: str | None = None, password: str | None = None) -> FakeGarmin:
+    def factory(
+        email: str | None = None,
+        password: str | None = None,
+        return_on_mfa: bool = False,
+    ) -> FakeGarmin:
         return FakeGarmin(mfa_flow=mfa_flow)
 
     return factory
@@ -40,8 +48,7 @@ def test_connect_returns_tokens_without_mfa(monkeypatch: pytest.MonkeyPatch) -> 
 
     tokens = adapter.connect("someone@example.com", "password")
 
-    assert tokens["oauth1_token.json"] == '{"token": "oauth1"}'
-    assert tokens["oauth2_token.json"] == '{"token": "oauth2"}'
+    assert tokens["tokens"] == '{"di_token": "fake-token"}'
 
 
 def test_connect_raises_mfa_required_and_tracks_session(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -61,7 +68,7 @@ def test_complete_mfa_with_correct_code_returns_tokens(monkeypatch: pytest.Monke
 
     tokens = adapter.complete_mfa(session_id, "123456")
 
-    assert tokens["oauth1_token.json"] == '{"token": "oauth1"}'
+    assert tokens["tokens"] == '{"di_token": "fake-token"}'
     assert session_id not in adapter._pending_mfa
 
 
@@ -82,6 +89,21 @@ def test_complete_mfa_with_unknown_session_raises_auth_error() -> None:
         adapter.complete_mfa("does-not-exist", "123456")
 
 
+def test_resume_loads_tokens_into_fresh_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(adapter, "Garmin", _fake_garmin_factory(mfa_flow=False))
+
+    client = adapter.resume({"tokens": "some-token-blob"})
+
+    assert client.client.loaded_tokens == "some-token-blob"
+
+
+def test_resume_raises_auth_error_on_bad_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(adapter, "Garmin", _fake_garmin_factory(mfa_flow=False))
+
+    with pytest.raises(adapter.GarminAuthError):
+        adapter.resume({"tokens": "invalid"})
+
+
 def test_serialize_deserialize_tokens_roundtrip() -> None:
-    tokens = {"oauth1_token.json": "a", "oauth2_token.json": "b"}
+    tokens = {"tokens": '{"di_token": "abc"}'}
     assert adapter.deserialize_tokens(adapter.serialize_tokens(tokens)) == tokens

@@ -4,29 +4,31 @@ Everything in this app that needs to talk to Garmin goes through this module.
 Garmin's unofficial API is a moving target (see docs/plan risk notes) — when it
 breaks, this should be the only file that needs to change.
 
-MFA note: garth's `login(..., return_on_mfa=True)` / `resume_login(...)` pair is
-the documented way to support MFA in a non-interactive (server) context, but it
-hasn't been exercised against a real MFA-enabled account yet -- if Garmin's
-actual response shape differs, this is the piece most likely to need a tweak.
+Confirmed against the installed `garminconnect` package source (not just docs):
+- `Garmin(email, password, return_on_mfa=True)` + `.login()` returns
+  `("needs_mfa", None)` when a code is required, `(None, None)` on success.
+- `Garmin.resume_login(None, code)` completes a paused MFA login -- its first
+  argument is accepted but unused by the library, so there's no separate
+  "context" object to carry between requests; the same `Garmin` instance is
+  the only thing that needs to be kept around between the two steps.
+- Session state lives on `garmin.client` (a `garminconnect.client.Client`),
+  serialized directly via `.dumps()` / `.loads(json_str)` -- a single JSON
+  blob, not the two-file oauth1/oauth2 layout older garth-based code expects.
 """
 
 import json
-import tempfile
 import time
 import uuid
 from datetime import date
-from pathlib import Path
-from typing import Any
 
 from garminconnect import Garmin
 
-TOKEN_FILENAMES = ("oauth1_token.json", "oauth2_token.json")
 MFA_SESSION_TTL_SECONDS = 300
 
 # In-memory only: fine for a single-process local deployment. A multi-replica
 # cloud deployment would need to move this to Redis (with the same TTL) since
 # an in-progress MFA login must be resumed by the same process that started it.
-_pending_mfa: dict[str, tuple[float, Garmin, Any]] = {}
+_pending_mfa: dict[str, tuple[float, Garmin]] = {}
 
 
 class GarminAuthError(Exception):
@@ -51,16 +53,16 @@ def connect(email: str, password: str) -> dict[str, str]:
     Raises GarminMfaRequiredError if Garmin asks for an MFA code -- call
     complete_mfa() with the returned session id once the user supplies it.
     """
-    client = Garmin(email=email, password=password)
+    client = Garmin(email=email, password=password, return_on_mfa=True)
     try:
-        result1, result2 = client.garth.login(email, password, return_on_mfa=True)
+        mfa_status, _legacy_token = client.login()
     except Exception as exc:
         raise GarminAuthError(str(exc)) from exc
 
-    if result1 == "needs_mfa":
+    if mfa_status == "needs_mfa":
         _prune_expired_mfa_sessions()
         session_id = str(uuid.uuid4())
-        _pending_mfa[session_id] = (time.time(), client, result2)
+        _pending_mfa[session_id] = (time.time(), client)
         raise GarminMfaRequiredError(session_id)
 
     return _dump_tokens(client)
@@ -75,9 +77,9 @@ def complete_mfa(mfa_session_id: str, code: str) -> dict[str, str]:
     entry = _pending_mfa.get(mfa_session_id)
     if entry is None:
         raise GarminAuthError("MFA session expired or not found, please reconnect")
-    _, client, mfa_context = entry
+    _, client = entry
     try:
-        client.garth.resume_login(mfa_context, code)
+        client.resume_login(None, code)
     except Exception as exc:
         raise GarminAuthError(str(exc)) from exc
     _pending_mfa.pop(mfa_session_id, None)
@@ -86,15 +88,11 @@ def complete_mfa(mfa_session_id: str, code: str) -> dict[str, str]:
 
 def resume(tokens: dict[str, str]) -> Garmin:
     """Rebuild a logged-in Garmin client from previously saved tokens, without a password."""
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        for filename, contents in tokens.items():
-            (tmp_path / filename).write_text(contents)
-        try:
-            client = Garmin()
-            client.login(tmp_path.as_posix())
-        except Exception as exc:
-            raise GarminAuthError(str(exc)) from exc
+    client = Garmin()
+    try:
+        client.client.loads(tokens["tokens"])
+    except Exception as exc:
+        raise GarminAuthError(str(exc)) from exc
     return client
 
 
@@ -114,14 +112,11 @@ def deserialize_tokens(blob: str) -> dict[str, str]:
 
 
 def _dump_tokens(client: Garmin) -> dict[str, str]:
-    with tempfile.TemporaryDirectory() as tmp:
-        tmp_path = Path(tmp)
-        client.garth.dump(tmp)
-        return {name: (tmp_path / name).read_text() for name in TOKEN_FILENAMES if (tmp_path / name).exists()}
+    return {"tokens": client.client.dumps()}
 
 
 def _prune_expired_mfa_sessions() -> None:
     now = time.time()
-    expired = [key for key, (started_at, _, _) in _pending_mfa.items() if now - started_at > MFA_SESSION_TTL_SECONDS]
+    expired = [key for key, (started_at, _) in _pending_mfa.items() if now - started_at > MFA_SESSION_TTL_SECONDS]
     for key in expired:
         _pending_mfa.pop(key, None)
