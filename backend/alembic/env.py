@@ -8,9 +8,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from app.core.config import get_settings
 from app.db.base import Base
-
-# Import models here so Base.metadata is populated for autogenerate.
-# from app.models import ...  # noqa: E402
+from app.models import *  # noqa: F401,F403 — populates Base.metadata for autogenerate
 
 config = context.config
 if config.config_file_name is not None:

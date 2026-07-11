@@ -7,3 +7,23 @@
   gap: 12px;
   text-align: center;
 }
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 260px;
+}
+
+.login-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.login-error {
+  color: #e5484d;
+  font-size: 0.9rem;
+}
