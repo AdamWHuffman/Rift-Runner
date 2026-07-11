@@ -26,5 +26,10 @@ class UserResponse(BaseModel):
     display_name: str
     units: str
     timezone: str
+    main_level: int
+    main_xp_total: float
+    xp_into_level: float
+    xp_to_next_level_snapshot: float
+    activities_this_level: int
 
     model_config = {"from_attributes": True}

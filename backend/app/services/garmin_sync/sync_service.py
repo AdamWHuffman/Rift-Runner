@@ -8,7 +8,9 @@ from app.core.crypto import decrypt
 from app.models.activity import Activity
 from app.models.garmin_credentials import GarminCredentials
 from app.models.sync_job import SyncJob
+from app.models.user import User
 from app.services.garmin_sync import adapter, mapper
+from app.services.xp_engine import calculator
 
 SYNC_OVERLAP = timedelta(hours=2)
 DEFAULT_LOOKBACK = timedelta(days=30)
@@ -43,7 +45,11 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
         creds.status = "error"
         return await _fail(db, job, str(exc))
 
+    user = await db.get(User, user_id)
+    assert user is not None, f"user {user_id} not found"
+
     synced_count = 0
+    level_up_events: list[dict] = []
     for raw in raw_activities:
         fields = mapper.map_activity(raw)
         existing = await db.scalar(
@@ -54,13 +60,19 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
         )
         if existing is not None:
             continue
-        db.add(Activity(user_id=user_id, source="garmin_sync", **fields))
+
+        activity = Activity(id=uuid.uuid4(), user_id=user_id, source="garmin_sync", **fields)
+        db.add(activity)
         synced_count += 1
+
+        for event in calculator.process_activity(db, user, activity):
+            level_up_events.append({"type": "main", "from_level": event.from_level, "to_level": event.to_level})
 
     creds.status = "connected"
     creds.last_sync_success_at = datetime.now(timezone.utc)
     job.status = "complete"
     job.activities_synced_count = synced_count
+    job.level_up_events = level_up_events
     job.finished_at = datetime.now(timezone.utc)
     await db.commit()
     return job

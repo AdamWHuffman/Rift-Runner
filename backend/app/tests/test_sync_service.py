@@ -6,6 +6,7 @@ from app.models.activity import Activity
 from app.models.garmin_credentials import GarminCredentials
 from app.models.sync_job import SyncJob
 from app.models.user import User
+from app.models.xp_transaction import XPTransaction
 from app.services.garmin_sync import adapter, sync_service
 
 SAMPLE_ACTIVITY = {
@@ -74,6 +75,48 @@ async def test_run_sync_creates_activities(
     await db_session.refresh(creds)
     assert creds.status == "connected"
     assert creds.last_sync_success_at is not None
+
+
+async def test_run_sync_processes_xp_for_new_activities(
+    db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _make_credentials(db_session, test_user)
+    job = await _make_job(db_session, test_user)
+    _patch_happy_path(monkeypatch, [SAMPLE_ACTIVITY])
+
+    await sync_service.run_sync(db_session, job.id, test_user.id)
+
+    activity = await db_session.scalar(select(Activity).where(Activity.user_id == test_user.id))
+    assert activity is not None
+
+    txn = await db_session.scalar(select(XPTransaction).where(XPTransaction.activity_id == activity.id))
+    assert txn is not None
+    assert txn.xp_type == "main"
+    # SAMPLE_ACTIVITY has no HR-zone data -> calories/duration fallback:
+    # 350*0.5 + 30*1.5 = 220, elevation 20m/5km -> 4 m/km -> *1.04
+    assert txn.base_xp == pytest.approx(220.0)
+    assert txn.final_xp == round(220.0 * 1.04)
+
+    await db_session.refresh(test_user)
+    assert test_user.main_xp_total == pytest.approx(txn.final_xp)
+
+
+async def test_run_sync_records_level_up_events_on_job(
+    db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _make_credentials(db_session, test_user)
+    job = await _make_job(db_session, test_user)
+    big_activity = {**SAMPLE_ACTIVITY, "calories": 2000.0, "duration": 3600.0}
+    _patch_happy_path(monkeypatch, [big_activity])
+
+    result = await sync_service.run_sync(db_session, job.id, test_user.id)
+
+    assert result.level_up_events is not None
+    assert len(result.level_up_events) == 1
+    assert result.level_up_events[0] == {"type": "main", "from_level": 1, "to_level": 2}
+
+    await db_session.refresh(test_user)
+    assert test_user.main_level == 2
 
 
 async def test_run_sync_is_idempotent_on_rerun(

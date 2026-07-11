@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, String, Uuid, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.services.xp_engine import leveling
 
 
 class User(Base):
@@ -17,6 +18,18 @@ class User(Base):
     units: Mapped[str] = mapped_column(String(10), nullable=False, default="metric")
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    main_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    main_xp_total: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    xp_into_level: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    xp_to_next_level_snapshot: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+        default=lambda: leveling.activities_to_next_level(1) * leveling.INITIAL_EMA_SEED,
+    )
+    activities_this_level: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    avg_xp_per_activity_ema: Mapped[float] = mapped_column(Float, nullable=False, default=leveling.INITIAL_EMA_SEED)
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
