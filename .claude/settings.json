@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(wsl -d Ubuntu -- bash -lc \"python3 --version; node --version; npm --version; docker --version; git --version; which uv\")",
+      "PowerShell(wsl -d Ubuntu -- bash -lc \"echo PY:; python3 --version; echo NODE:; node --version; echo NPM:; npm --version; echo UV:; uv --version\")",
+      "PowerShell($OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; wsl -d Ubuntu -- bash -lc \"which python3 node npm docker git uv 2>&1; echo ---; python3 --version 2>&1; node --version 2>&1; npm --version 2>&1\")",
+      "PowerShell(wsl -d Ubuntu -- bash -lc \"docker version --format '{{.Server.Version}}' 2>&1; echo ---; ls /mnt/wsl/ 2>&1; echo ---; cat /etc/os-release | head -2\")",
+      "PowerShell(wsl -d Ubuntu -- bash -lc \"sudo -n true 2>&1 && echo PASSWORDLESS_SUDO_OK || echo NEEDS_PASSWORD\")"
+    ]
+  }
+}
