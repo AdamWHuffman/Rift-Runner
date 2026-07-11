@@ -37,6 +37,9 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      # Same Docker+WSL2 bind-mount caveat as the frontend's Vite config --
+      # force polling so --reload reliably sees Windows-side file edits.
+      WATCHFILES_FORCE_POLLING: "true"
     ports:
       - "8000:8000"
     volumes:

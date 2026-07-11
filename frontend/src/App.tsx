@@ -28,6 +28,11 @@ function App() {
     setUser(null)
   }
 
+  const refreshUser = () => {
+    if (!accessToken) return
+    getCurrentUser(accessToken).then(setUser).catch(() => {})
+  }
+
   return (
     <main className="app-shell">
       <h1>The Quest for Health</h1>
@@ -46,7 +51,26 @@ function App() {
           <button type="button" onClick={handleLogout}>
             Log out
           </button>
-          <GarminPanel accessToken={accessToken} />
+
+          <div className="level-panel">
+            <h2>Level {user.main_level}</h2>
+            <p>
+              {Math.round(user.xp_into_level)} / {Math.round(user.xp_to_next_level_snapshot)} XP to next level
+            </p>
+            <div className="xp-bar">
+              <div
+                className="xp-bar-fill"
+                style={{
+                  width: `${Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100)}%`,
+                }}
+              />
+            </div>
+            <p>
+              {user.activities_this_level} activities this level · {Math.round(user.main_xp_total)} total XP earned
+            </p>
+          </div>
+
+          <GarminPanel accessToken={accessToken} onSyncComplete={refreshUser} />
         </div>
       ) : (
         <LoginForm onSubmit={handleLogin} />

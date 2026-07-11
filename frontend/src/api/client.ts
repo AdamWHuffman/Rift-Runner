@@ -12,6 +12,11 @@ export interface UserResponse {
   display_name: string
   units: string
   timezone: string
+  main_level: number
+  main_xp_total: number
+  xp_into_level: number
+  xp_to_next_level_snapshot: number
+  activities_this_level: number
 }
 
 export interface GarminStatusResponse {

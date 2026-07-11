@@ -27,3 +27,22 @@
   color: #e5484d;
   font-size: 0.9rem;
 }
+
+.level-panel {
+  width: 280px;
+  margin: 16px 0;
+}
+
+.xp-bar {
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  background: #33333366;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6ee7b7, #34d399);
+  transition: width 0.4s ease;
+}

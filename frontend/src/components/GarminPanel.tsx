@@ -11,9 +11,10 @@ import {
 
 interface GarminPanelProps {
   accessToken: string
+  onSyncComplete?: () => void
 }
 
-function GarminPanel({ accessToken }: GarminPanelProps) {
+function GarminPanel({ accessToken, onSyncComplete }: GarminPanelProps) {
   const [status, setStatus] = useState<GarminStatusResponse | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -35,11 +36,14 @@ function GarminPanel({ accessToken }: GarminPanelProps) {
     if (!job || job.status === 'complete' || job.status === 'failed') return
     const interval = setInterval(() => {
       getSyncJob(accessToken, job.id)
-        .then(setJob)
+        .then((updated) => {
+          setJob(updated)
+          if (updated.status === 'complete') onSyncComplete?.()
+        })
         .catch(() => {})
     }, 1200)
     return () => clearInterval(interval)
-  }, [job, accessToken])
+  }, [job, accessToken, onSyncComplete])
 
   const handleConnect = async (e: FormEvent) => {
     e.preventDefault()
