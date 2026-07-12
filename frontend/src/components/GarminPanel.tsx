@@ -11,11 +11,12 @@ import {
 
 interface GarminPanelProps {
   accessToken: string
+  syncNonce?: number
   onSyncComplete?: (job: SyncJobResponse) => void
   onSyncFailed?: (message: string) => void
 }
 
-function GarminPanel({ accessToken, onSyncComplete, onSyncFailed }: GarminPanelProps) {
+function GarminPanel({ accessToken, syncNonce, onSyncComplete, onSyncFailed }: GarminPanelProps) {
   const [status, setStatus] = useState<GarminStatusResponse | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -25,6 +26,7 @@ function GarminPanel({ accessToken, onSyncComplete, onSyncFailed }: GarminPanelP
   const [error, setError] = useState<string | null>(null)
   const [job, setJob] = useState<SyncJobResponse | null>(null)
   const autoSyncedRef = useRef(false)
+  const isFirstSyncNonceRef = useRef(true)
 
   const refreshStatus = () => {
     getGarminStatus(accessToken)
@@ -116,6 +118,21 @@ function GarminPanel({ accessToken, onSyncComplete, onSyncFailed }: GarminPanelP
     runSync()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
+
+  // Re-sync on demand (currently: right after a progress reset) -- bypasses
+  // the once-per-mount guard above, since that's a deliberate "get me fresh
+  // data now" request, not a page load. Skips the initial render so mounting
+  // with a nonexistent-yet syncNonce doesn't double-fire alongside the
+  // mount-triggered sync above.
+  useEffect(() => {
+    if (isFirstSyncNonceRef.current) {
+      isFirstSyncNonceRef.current = false
+      return
+    }
+    if (!status || !status.connected || status.status === 'needs_reauth') return
+    runSync()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncNonce])
 
   if (status === null) {
     return null

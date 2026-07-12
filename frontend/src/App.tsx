@@ -20,6 +20,7 @@ function App() {
   const [checkingSession, setCheckingSession] = useState(true)
   const [view, setView] = useState<View>('dashboard')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [syncNonce, setSyncNonce] = useState(0)
   const [postActivityQueue, setPostActivityQueue] = useState<ActivitySummaryResponse[]>([])
   const [celebrationEvents, setCelebrationEvents] = useState<LevelUpEvent[]>([])
   const [toast, setToast] = useState<string | null>(null)
@@ -93,6 +94,10 @@ function App() {
   const handleAccountReset = (updated: UserResponse) => {
     setUser(updated)
     setRefreshKey((key) => key + 1)
+    // A reset with nothing to re-sync afterward would just look broken --
+    // the whole point is watching it repopulate, not needing to know a page
+    // reload will restart auto-sync.
+    setSyncNonce((n) => n + 1)
   }
 
   const xpPct = user ? Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100) : 0
@@ -168,7 +173,12 @@ function App() {
               <HomeBasePanel accessToken={accessToken} />
               <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
               <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} />
-              <GarminPanel accessToken={accessToken} onSyncComplete={handleSyncComplete} onSyncFailed={handleSyncFailed} />
+              <GarminPanel
+                accessToken={accessToken}
+                syncNonce={syncNonce}
+                onSyncComplete={handleSyncComplete}
+                onSyncFailed={handleSyncFailed}
+              />
             </div>
             {view === 'account' && (
               <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
