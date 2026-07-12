@@ -28,6 +28,11 @@ async def connect_garmin(
         tokens = adapter.connect(payload.email, payload.password)
     except adapter.GarminMfaRequiredError as exc:
         return GarminConnectResponse(mfa_required=True, mfa_session_id=exc.mfa_session_id)
+    except adapter.GarminRateLimitedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Garmin is rate-limiting login attempts from this network right now. Wait a while before trying again.",
+        ) from exc
     except adapter.GarminAuthError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not log in to Garmin: {exc}"
@@ -44,6 +49,11 @@ async def complete_garmin_mfa(
 ) -> GarminConnectResponse:
     try:
         tokens = adapter.complete_mfa(payload.mfa_session_id, payload.code)
+    except adapter.GarminRateLimitedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Garmin is rate-limiting login attempts from this network right now. Wait a while before trying again.",
+        ) from exc
     except adapter.GarminAuthError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail=f"Could not complete Garmin MFA: {exc}"

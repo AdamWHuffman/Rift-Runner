@@ -14,6 +14,15 @@ Confirmed against the installed `garminconnect` package source (not just docs):
 - Session state lives on `garmin.client` (a `garminconnect.client.Client`),
   serialized directly via `.dumps()` / `.loads(json_str)` -- a single JSON
   blob, not the two-file oauth1/oauth2 layout older garth-based code expects.
+- `login()` tries a 5-strategy cascade internally (mobile app API first, then
+  progressively different web-based fallbacks). If the first strategies get
+  429-rate-limited, it silently falls through to a fallback strategy that can
+  ask for MFA/verification *even for accounts with no real 2FA enabled* --
+  from this module's perspective that's indistinguishable from a genuine MFA
+  requirement, since the library only surfaces the final `needs_mfa` outcome,
+  not which strategy produced it. Only a *full* exhaustion (every strategy
+  rate-limited) is distinguishable, as `GarminConnectTooManyRequestsError` --
+  see GarminRateLimitedError below.
 """
 
 import json
@@ -22,7 +31,7 @@ import time
 import uuid
 from datetime import date
 
-from garminconnect import Garmin
+from garminconnect import Garmin, GarminConnectTooManyRequestsError
 
 logger = logging.getLogger(__name__)
 
@@ -50,15 +59,30 @@ class GarminMfaRequiredError(Exception):
         super().__init__("MFA code required to complete Garmin login")
 
 
+class GarminRateLimitedError(Exception):
+    """Raised when Garmin has rate-limited login attempts from this network.
+
+    Distinct from GarminMfaRequiredError: a *partially* rate-limited login
+    (some strategies 429, one fallback strategy still gets far enough to ask
+    for MFA) is NOT distinguishable from this module's perspective -- it
+    still surfaces as needs_mfa, see the module docstring. This exception
+    only fires when the library itself gives up and raises
+    GarminConnectTooManyRequestsError, i.e. every strategy was rate-limited.
+    """
+
+
 def connect(email: str, password: str) -> dict[str, str]:
     """Perform a fresh Garmin login and return the resulting session tokens.
 
     Raises GarminMfaRequiredError if Garmin asks for an MFA code -- call
     complete_mfa() with the returned session id once the user supplies it.
+    Raises GarminRateLimitedError if Garmin has rate-limited this network.
     """
     client = Garmin(email=email, password=password, return_on_mfa=True)
     try:
         mfa_status, _legacy_token = client.login()
+    except GarminConnectTooManyRequestsError as exc:
+        raise GarminRateLimitedError(str(exc)) from exc
     except Exception as exc:
         raise GarminAuthError(str(exc)) from exc
 
@@ -83,6 +107,8 @@ def complete_mfa(mfa_session_id: str, code: str) -> dict[str, str]:
     _, client = entry
     try:
         client.resume_login(None, code)
+    except GarminConnectTooManyRequestsError as exc:
+        raise GarminRateLimitedError(str(exc)) from exc
     except Exception as exc:
         raise GarminAuthError(str(exc)) from exc
     _pending_mfa.pop(mfa_session_id, None)

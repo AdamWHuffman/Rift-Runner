@@ -1,4 +1,5 @@
 import pytest
+from garminconnect import GarminConnectTooManyRequestsError
 
 from app.services.garmin_sync import adapter
 
@@ -17,17 +18,27 @@ class FakeClient:
 
 
 class FakeGarmin:
-    def __init__(self, mfa_flow: bool = False, activity_details: dict | None = None) -> None:
+    def __init__(
+        self,
+        mfa_flow: bool = False,
+        activity_details: dict | None = None,
+        rate_limited: bool = False,
+    ) -> None:
         self.client = FakeClient()
         self.mfa_flow = mfa_flow
         self.activity_details = activity_details or {}
+        self.rate_limited = rate_limited
 
     def login(self) -> tuple[str | None, None]:
+        if self.rate_limited:
+            raise GarminConnectTooManyRequestsError("Mobile login returned 429 — IP rate limited by Garmin")
         if self.mfa_flow:
             return "needs_mfa", None
         return None, None
 
     def resume_login(self, client_state: object, mfa_code: str) -> tuple[None, None]:
+        if self.rate_limited:
+            raise GarminConnectTooManyRequestsError("Mobile login returned 429 — IP rate limited by Garmin")
         if mfa_code != "123456":
             raise Exception("invalid MFA code")
         return None, None
@@ -36,13 +47,13 @@ class FakeGarmin:
         return self.activity_details
 
 
-def _fake_garmin_factory(mfa_flow: bool):
+def _fake_garmin_factory(mfa_flow: bool = False, rate_limited: bool = False):
     def factory(
         email: str | None = None,
         password: str | None = None,
         return_on_mfa: bool = False,
     ) -> FakeGarmin:
-        return FakeGarmin(mfa_flow=mfa_flow)
+        return FakeGarmin(mfa_flow=mfa_flow, rate_limited=rate_limited)
 
     return factory
 
@@ -91,6 +102,39 @@ def test_complete_mfa_with_wrong_code_raises_auth_error(monkeypatch: pytest.Monk
 def test_complete_mfa_with_unknown_session_raises_auth_error() -> None:
     with pytest.raises(adapter.GarminAuthError):
         adapter.complete_mfa("does-not-exist", "123456")
+
+
+def test_connect_raises_rate_limited_when_garmin_returns_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(adapter, "Garmin", _fake_garmin_factory(rate_limited=True))
+
+    with pytest.raises(adapter.GarminRateLimitedError):
+        adapter.connect("someone@example.com", "password")
+
+
+def test_connect_rate_limit_does_not_leave_a_pending_mfa_session(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(adapter, "Garmin", _fake_garmin_factory(rate_limited=True))
+    sessions_before = set(adapter._pending_mfa)
+
+    with pytest.raises(adapter.GarminRateLimitedError):
+        adapter.connect("someone@example.com", "password")
+
+    assert set(adapter._pending_mfa) == sessions_before
+
+
+def test_complete_mfa_raises_rate_limited_when_garmin_returns_429(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(adapter, "Garmin", _fake_garmin_factory(mfa_flow=True))
+    with pytest.raises(adapter.GarminMfaRequiredError) as exc_info:
+        adapter.connect("someone@example.com", "password")
+    session_id = exc_info.value.mfa_session_id
+
+    # Simulate Garmin starting to rate-limit mid-flow, after the MFA prompt
+    # was already issued -- the pending client's next call (resume_login)
+    # hits the same 429 the initial login strategies did.
+    _, pending_client = adapter._pending_mfa[session_id]
+    pending_client.rate_limited = True
+
+    with pytest.raises(adapter.GarminRateLimitedError):
+        adapter.complete_mfa(session_id, "123456")
 
 
 def test_resume_loads_tokens_into_fresh_client(monkeypatch: pytest.MonkeyPatch) -> None:

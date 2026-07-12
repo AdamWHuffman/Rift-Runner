@@ -149,7 +149,10 @@ function GarminPanel({ accessToken, syncNonce, onSyncComplete, onSyncFailed }: G
       <section className="section">
         <div className="section-head">
           <span className="section-title">Enter Garmin MFA Code</span>
-          <span className="section-sub">most accounts don't need this — you're only seeing it because yours has it enabled</span>
+          <span className="section-sub">
+            check your authenticator app or email for a code. If none arrives, Garmin may just be rate-limiting
+            login attempts — cancel below and wait a bit before trying again.
+          </span>
         </div>
         <form onSubmit={handleMfaSubmit} className="card form-card">
           <label>

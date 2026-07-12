@@ -106,8 +106,9 @@ function GarminStep({ accessToken, onNext }: { accessToken: string; onNext: () =
         <p className="onboarding-eyebrow">Step 1 of 3</p>
         <h2 className="onboarding-title">Enter Garmin MFA Code</h2>
         <p className="onboarding-body">
-          Most Garmin accounts don't have this turned on — you're only seeing this because yours does. If you don't
-          have a code handy, go back and try again once you do.
+          Check your authenticator app or email for a code. If nothing arrives, Garmin may just be rate-limiting
+          login attempts from this network rather than asking for real MFA — back out and wait a while before
+          retrying.
         </p>
         <form onSubmit={handleMfaSubmit} className="form-card">
           <label>
