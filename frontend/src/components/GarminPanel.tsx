@@ -11,12 +11,11 @@ import {
 
 interface GarminPanelProps {
   accessToken: string
-  onSyncStart?: () => void
   onSyncComplete?: (job: SyncJobResponse) => void
   onSyncFailed?: (message: string) => void
 }
 
-function GarminPanel({ accessToken, onSyncStart, onSyncComplete, onSyncFailed }: GarminPanelProps) {
+function GarminPanel({ accessToken, onSyncComplete, onSyncFailed }: GarminPanelProps) {
   const [status, setStatus] = useState<GarminStatusResponse | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -86,22 +85,23 @@ function GarminPanel({ accessToken, onSyncStart, onSyncComplete, onSyncFailed }:
     }
   }
 
-  const handleSync = async () => {
-    setError(null)
+  // Runs silently -- no button, no full-screen overlay. A sync either finds
+  // nothing (nothing to show) or finds something (the post-activity reveal /
+  // level-up celebration already say so on their own), so there's nothing a
+  // dedicated "syncing" UI needs to announce beyond the quiet status line
+  // below.
+  const runSync = async () => {
     try {
-      onSyncStart?.()
       const result = await triggerSync(accessToken)
       setJob(result)
       // The debounced trigger endpoint can hand back an already-terminal job
       // (e.g. a sync that completed moments ago) instead of a fresh 'queued'
-      // one -- the polling effect below never sees that job change, so it
-      // has to be handled here too or onSyncStart's overlay never clears.
+      // one -- the polling effect above never sees that job change, so it
+      // has to be handled here too.
       if (result.status === 'complete') onSyncComplete?.(result)
       if (result.status === 'failed') onSyncFailed?.(result.error_message ?? 'Sync failed')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not start sync'
-      setError(message)
-      onSyncFailed?.(message)
+      onSyncFailed?.(err instanceof Error ? err.message : 'Could not start sync')
     }
   }
 
@@ -113,7 +113,7 @@ function GarminPanel({ accessToken, onSyncStart, onSyncComplete, onSyncFailed }:
     if (!status || autoSyncedRef.current) return
     if (!status.connected || status.status === 'needs_reauth') return
     autoSyncedRef.current = true
-    handleSync()
+    runSync()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
 
@@ -177,27 +177,11 @@ function GarminPanel({ accessToken, onSyncStart, onSyncComplete, onSyncFailed }:
   const syncInFlight = job !== null && (job.status === 'queued' || job.status === 'running')
 
   return (
-    <section className="section">
-      <div className="section-head">
-        <span className="section-title">Garmin</span>
-        <span className="section-sub">
-          {status.status} · last synced {status.last_sync_success_at ? new Date(status.last_sync_success_at).toLocaleString() : 'never'}
-        </span>
-      </div>
-      <div className="card garmin-sync-card">
-        <button type="button" className="btn" onClick={handleSync} disabled={syncInFlight}>
-          {syncInFlight ? 'Syncing…' : 'Sync now'}
-        </button>
-        {job && (
-          <p className="sync-status-line">
-            {job.status === 'complete' && `${job.activities_synced_count} activities synced`}
-            {job.status === 'failed' && job.error_message}
-            {(job.status === 'queued' || job.status === 'running') && 'Sync in progress…'}
-          </p>
-        )}
-        {error && <p className="form-error">{error}</p>}
-      </div>
-    </section>
+    <p className="garmin-status-line">
+      Garmin connected · last synced{' '}
+      {status.last_sync_success_at ? new Date(status.last_sync_success_at).toLocaleString() : 'never'}
+      {syncInFlight ? ' · syncing…' : ''}
+    </p>
   )
 }
 

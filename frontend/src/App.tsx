@@ -9,7 +9,6 @@ import HomeBasePanel from './components/HomeBasePanel'
 import LevelUpCelebration from './components/LevelUpCelebration'
 import LoginForm from './components/LoginForm'
 import PostActivityXPScreen from './components/PostActivityXPScreen'
-import SyncOverlay from './components/SyncOverlay'
 import Toast from './components/Toast'
 
 type View = 'dashboard' | 'account'
@@ -21,7 +20,6 @@ function App() {
   const [checkingSession, setCheckingSession] = useState(true)
   const [view, setView] = useState<View>('dashboard')
   const [refreshKey, setRefreshKey] = useState(0)
-  const [syncing, setSyncing] = useState(false)
   const [postActivityQueue, setPostActivityQueue] = useState<ActivitySummaryResponse[]>([])
   const [celebrationEvents, setCelebrationEvents] = useState<LevelUpEvent[]>([])
   const [toast, setToast] = useState<string | null>(null)
@@ -62,12 +60,7 @@ function App() {
     setView('dashboard')
   }
 
-  const handleSyncStart = () => {
-    setSyncing(true)
-  }
-
   const handleSyncComplete = (job: SyncJobResponse) => {
-    setSyncing(false)
     if (!accessToken) return
     getCurrentUser(accessToken).then(setUser).catch(() => {})
     setRefreshKey((key) => key + 1)
@@ -94,7 +87,6 @@ function App() {
   }
 
   const handleSyncFailed = () => {
-    setSyncing(false)
     setToast('Could not reach Garmin — showing cached data')
   }
 
@@ -170,18 +162,13 @@ function App() {
           <>
             {/* Kept mounted (just hidden) across view switches -- GarminPanel
                 owns in-flight sync tracking (auto-sync-on-mount, polling), and
-                unmounting it mid-sync orphaned that state, leaving the sync
-                overlay stuck forever. */}
+                unmounting it mid-sync orphaned that state, leaving syncs stuck
+                forever. */}
             <div className="sections dashboard-sections" style={view === 'dashboard' ? undefined : { display: 'none' }}>
               <HomeBasePanel accessToken={accessToken} />
               <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
               <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} />
-              <GarminPanel
-                accessToken={accessToken}
-                onSyncStart={handleSyncStart}
-                onSyncComplete={handleSyncComplete}
-                onSyncFailed={handleSyncFailed}
-              />
+              <GarminPanel accessToken={accessToken} onSyncComplete={handleSyncComplete} onSyncFailed={handleSyncFailed} />
             </div>
             {view === 'account' && (
               <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
@@ -192,7 +179,6 @@ function App() {
         )}
       </div>
 
-      {syncing && <SyncOverlay />}
       {postActivityQueue.length > 0 && (
         <PostActivityXPScreen activities={postActivityQueue} onDone={handlePostActivityDone} />
       )}
