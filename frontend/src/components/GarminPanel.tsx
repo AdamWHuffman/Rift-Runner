@@ -11,10 +11,11 @@ import {
 
 interface GarminPanelProps {
   accessToken: string
-  onSyncComplete?: () => void
+  onSyncStart?: () => void
+  onSyncComplete?: (job: SyncJobResponse) => void
 }
 
-function GarminPanel({ accessToken, onSyncComplete }: GarminPanelProps) {
+function GarminPanel({ accessToken, onSyncStart, onSyncComplete }: GarminPanelProps) {
   const [status, setStatus] = useState<GarminStatusResponse | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -38,7 +39,7 @@ function GarminPanel({ accessToken, onSyncComplete }: GarminPanelProps) {
       getSyncJob(accessToken, job.id)
         .then((updated) => {
           setJob(updated)
-          if (updated.status === 'complete') onSyncComplete?.()
+          if (updated.status === 'complete') onSyncComplete?.(updated)
         })
         .catch(() => {})
     }, 1200)
@@ -85,6 +86,7 @@ function GarminPanel({ accessToken, onSyncComplete }: GarminPanelProps) {
   const handleSync = async () => {
     setError(null)
     try {
+      onSyncStart?.()
       const result = await triggerSync(accessToken)
       setJob(result)
     } catch (err) {
@@ -93,14 +95,16 @@ function GarminPanel({ accessToken, onSyncComplete }: GarminPanelProps) {
   }
 
   if (status === null) {
-    return <p>Loading Garmin status…</p>
+    return null
   }
 
   if (mfaSessionId) {
     return (
-      <div className="garmin-panel">
-        <h2>Enter Garmin MFA code</h2>
-        <form onSubmit={handleMfaSubmit} className="login-form">
+      <section className="section">
+        <div className="section-head">
+          <span className="section-title">Enter Garmin MFA Code</span>
+        </div>
+        <form onSubmit={handleMfaSubmit} className="card form-card">
           <label>
             MFA code
             <input
@@ -112,64 +116,65 @@ function GarminPanel({ accessToken, onSyncComplete }: GarminPanelProps) {
               autoFocus
             />
           </label>
-          <button type="submit" disabled={connecting}>
+          <button type="submit" className="btn" disabled={connecting}>
             {connecting ? 'Verifying…' : 'Verify code'}
           </button>
-          {error && <p className="login-error">{error}</p>}
+          {error && <p className="form-error">{error}</p>}
         </form>
-      </div>
+      </section>
     )
   }
 
   if (!status.connected || status.status === 'needs_reauth') {
     return (
-      <div className="garmin-panel">
-        <h2>Connect Garmin</h2>
-        {status.status === 'needs_reauth' && (
-          <p className="login-error">Your Garmin session expired — reconnect below.</p>
-        )}
-        <form onSubmit={handleConnect} className="login-form">
+      <section className="section">
+        <div className="section-head">
+          <span className="section-title">Connect Garmin</span>
+          <span className="section-sub">sync your real activities to start earning XP</span>
+        </div>
+        {status.status === 'needs_reauth' && <p className="form-error">Your Garmin session expired — reconnect below.</p>}
+        <form onSubmit={handleConnect} className="card form-card">
           <label>
             Garmin email
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           </label>
           <label>
             Garmin password
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </label>
-          <button type="submit" disabled={connecting}>
+          <button type="submit" className="btn" disabled={connecting}>
             {connecting ? 'Connecting…' : 'Connect Garmin'}
           </button>
-          {error && <p className="login-error">{error}</p>}
+          {error && <p className="form-error">{error}</p>}
         </form>
-      </div>
+      </section>
     )
   }
 
   const syncInFlight = job !== null && (job.status === 'queued' || job.status === 'running')
 
   return (
-    <div className="garmin-panel">
-      <h2>Garmin</h2>
-      <p>Status: {status.status}</p>
-      <p>Last synced: {status.last_sync_success_at ?? 'never'}</p>
-      <button type="button" onClick={handleSync} disabled={syncInFlight}>
-        {syncInFlight ? 'Syncing…' : 'Sync now'}
-      </button>
-      {job && (
-        <p>
-          Sync job: {job.status}
-          {job.status === 'complete' && ` — ${job.activities_synced_count} activities synced`}
-          {job.status === 'failed' && ` — ${job.error_message}`}
-        </p>
-      )}
-      {error && <p className="login-error">{error}</p>}
-    </div>
+    <section className="section">
+      <div className="section-head">
+        <span className="section-title">Garmin</span>
+        <span className="section-sub">
+          {status.status} · last synced {status.last_sync_success_at ? new Date(status.last_sync_success_at).toLocaleString() : 'never'}
+        </span>
+      </div>
+      <div className="card garmin-sync-card">
+        <button type="button" className="btn" onClick={handleSync} disabled={syncInFlight}>
+          {syncInFlight ? 'Syncing…' : 'Sync now'}
+        </button>
+        {job && (
+          <p className="sync-status-line">
+            {job.status === 'complete' && `${job.activities_synced_count} activities synced`}
+            {job.status === 'failed' && job.error_message}
+            {(job.status === 'queued' || job.status === 'running') && 'Sync in progress…'}
+          </p>
+        )}
+        {error && <p className="form-error">{error}</p>}
+      </div>
+    </section>
   )
 }
 

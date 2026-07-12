@@ -35,29 +35,35 @@ function HomeBasePanel({ accessToken }: HomeBasePanelProps) {
 
   if (region) {
     return (
-      <div className="home-base-panel">
-        <h2>Home Base</h2>
-        <p>
-          <strong>{region.name}</strong> ({region.theme})
-        </p>
-      </div>
+      <section className="section">
+        <div className="section-head">
+          <span className="section-title">Home Base</span>
+        </div>
+        <div className="card home-base-card">
+          <span className="quest-name">{region.name}</span>
+          <p className="quest-desc">A {region.theme} region — this is where your journey begins.</p>
+        </div>
+      </section>
     )
   }
 
   return (
-    <div className="home-base-panel">
-      <h2>Set Your Home Base</h2>
-      <form onSubmit={handleSubmit} className="login-form">
+    <section className="section">
+      <div className="section-head">
+        <span className="section-title">Set Your Home Base</span>
+        <span className="section-sub">tell us where you usually start from</span>
+      </div>
+      <form onSubmit={handleSubmit} className="card form-card">
         <label>
           Home address
           <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)} />
         </label>
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="btn" disabled={submitting}>
           {submitting ? 'Finding…' : 'Set Home Base'}
         </button>
-        {error && <p className="login-error">{error}</p>}
+        {error && <p className="form-error">{error}</p>}
       </form>
-    </div>
+    </section>
   )
 }
 

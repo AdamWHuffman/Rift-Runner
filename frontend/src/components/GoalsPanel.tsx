@@ -36,24 +36,27 @@ function GoalsPanel({ accessToken }: GoalsPanelProps) {
   if (!goals || goals.length === 0) return null
 
   return (
-    <div className="goals-panel">
-      <h2>Goal</h2>
+    <section className="section">
+      <div className="section-head">
+        <span className="section-title">Active Quest</span>
+        <span className="section-sub">switch anytime — history stays intact</span>
+      </div>
       <div className="goals-list">
         {goals.map((goal) => (
           <button
             key={goal.key}
             type="button"
-            className={`goal-card${activeGoal?.key === goal.key ? ' goal-card-active' : ''}`}
+            className={`card goal-card${activeGoal?.key === goal.key ? ' goal-card-active' : ''}`}
             disabled={switching}
             onClick={() => handleSelect(goal.key)}
           >
-            <strong>{goal.display_name}</strong>
-            <span className="goal-description">{goal.description}</span>
+            <span className="quest-name">{goal.display_name}</span>
+            <p className="quest-desc">{goal.description}</p>
           </button>
         ))}
       </div>
-      {error && <p className="login-error">{error}</p>}
-    </div>
+      {error && <p className="form-error">{error}</p>}
+    </section>
   )
 }
 

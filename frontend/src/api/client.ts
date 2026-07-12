@@ -32,6 +32,15 @@ export interface GarminConnectResponse {
   mfa_session_id: string | null
 }
 
+export interface LevelUpEvent {
+  type: 'main' | 'skill' | 'course'
+  skill_key: string | null
+  course_id: string | null
+  course_name: string | null
+  from_level: number
+  to_level: number
+}
+
 export interface SyncJobResponse {
   id: string
   status: 'queued' | 'running' | 'complete' | 'failed'
@@ -39,6 +48,7 @@ export interface SyncJobResponse {
   error_message: string | null
   started_at: string | null
   finished_at: string | null
+  level_up_events: LevelUpEvent[] | null
 }
 
 export interface SkillProgressResponse {
@@ -78,6 +88,35 @@ export interface GoalResponse {
   display_name: string
   description: string
   zone_weight_targets: number[]
+}
+
+export interface XPBreakdown {
+  base_xp: number
+  multipliers: Record<string, number>
+  final_xp: number
+  level_before: number
+  level_after: number
+}
+
+export interface SkillXP {
+  skill_key: string
+  final_xp: number
+}
+
+export interface ActivitySummaryResponse {
+  id: string
+  activity_name: string | null
+  activity_type: string
+  start_time: string
+  distance_meters: number
+  duration_seconds: number
+  elevation_gain_meters: number
+  avg_hr: number | null
+  is_personal_record: boolean | null
+  course_name: string | null
+  region_name: string | null
+  main_xp: XPBreakdown | null
+  skill_xp: SkillXP[]
 }
 
 class ApiError extends Error {
@@ -197,4 +236,8 @@ export async function setActiveGoal(accessToken: string, goalKey: string): Promi
     method: 'POST',
     body: JSON.stringify({ goal_key: goalKey }),
   })
+}
+
+export async function getActivities(accessToken: string): Promise<ActivitySummaryResponse[]> {
+  return authedRequest<ActivitySummaryResponse[]>('/api/v1/activities', accessToken)
 }

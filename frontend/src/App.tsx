@@ -1,18 +1,23 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { API_BASE_URL, getCurrentUser, login, type UserResponse } from './api/client'
+import { API_BASE_URL, getCurrentUser, login, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
+import ActivityFeed from './components/ActivityFeed'
 import CoursesPanel from './components/CoursesPanel'
 import GarminPanel from './components/GarminPanel'
 import GoalsPanel from './components/GoalsPanel'
 import HomeBasePanel from './components/HomeBasePanel'
+import LevelUpCelebration from './components/LevelUpCelebration'
 import LoginForm from './components/LoginForm'
 import SkillsPanel from './components/SkillsPanel'
+import SyncOverlay from './components/SyncOverlay'
 
 function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [user, setUser] = useState<UserResponse | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [syncing, setSyncing] = useState(false)
+  const [celebrationEvents, setCelebrationEvents] = useState<LevelUpEvent[]>([])
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/health`)
@@ -33,61 +38,81 @@ function App() {
     setUser(null)
   }
 
-  const handleSyncComplete = () => {
+  const handleSyncStart = () => {
+    setSyncing(true)
+  }
+
+  const handleSyncComplete = (job: SyncJobResponse) => {
+    setSyncing(false)
     if (!accessToken) return
     getCurrentUser(accessToken).then(setUser).catch(() => {})
     setRefreshKey((key) => key + 1)
+    if (job.level_up_events && job.level_up_events.length > 0) {
+      setCelebrationEvents(job.level_up_events)
+    }
   }
+
+  const xpPct = user ? Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100) : 0
 
   return (
     <main className="app-shell">
-      <h1>The Quest for Health</h1>
-      <p>
-        API status:{' '}
-        <strong>
-          {apiStatus === 'checking' ? 'checking…' : apiStatus === 'ok' ? 'connected' : 'unreachable'}
-        </strong>
-      </p>
-
-      {user && accessToken ? (
-        <div>
-          <p>
-            Logged in as <strong>{user.display_name}</strong> ({user.email})
+      <div className="page">
+        <header className="hero">
+          <p className="eyebrow">
+            API status: <strong>{apiStatus === 'checking' ? 'checking…' : apiStatus === 'ok' ? 'connected' : 'unreachable'}</strong>
           </p>
-          <button type="button" onClick={handleLogout}>
-            Log out
-          </button>
+          <h1 className="wordmark">
+            The Quest for <span className="pop">Health</span>
+          </h1>
+          <p className="tagline">Your real runs, gently reinterpreted. Every activity levels you up.</p>
 
-          <div className="level-panel">
-            <h2>Level {user.main_level}</h2>
-            <p>
-              {Math.round(user.xp_into_level)} / {Math.round(user.xp_to_next_level_snapshot)} XP to next level
-            </p>
-            <div className="xp-bar">
-              <div
-                className="xp-bar-fill"
-                style={{
-                  width: `${Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100)}%`,
-                }}
-              />
+          {user && accessToken && (
+            <div className="card plaque">
+              <div className="level-badge">
+                <span className="num">{user.main_level}</span>
+                <span className="lbl">Level</span>
+              </div>
+              <div className="plaque-body">
+                <div className="name-line">
+                  {user.display_name} <span className="home">· {user.email}</span>
+                </div>
+                <div className="xp-row">
+                  <span>XP to next level</span>
+                  <span className="val">
+                    {Math.round(user.xp_into_level)} / {Math.round(user.xp_to_next_level_snapshot)}
+                  </span>
+                </div>
+                <div className="xp-track">
+                  <div className="xp-fill" style={{ width: `${xpPct}%` }} />
+                </div>
+                <p className="meta-line">
+                  {user.activities_this_level} activities this level · {Math.round(user.main_xp_total)} lifetime XP
+                </p>
+              </div>
+              <button type="button" className="btn-ghost" onClick={handleLogout}>
+                Log out
+              </button>
             </div>
-            <p>
-              {user.activities_this_level} activities this level · {Math.round(user.main_xp_total)} total XP earned
-            </p>
+          )}
+        </header>
+
+        {user && accessToken ? (
+          <div className="sections">
+            <HomeBasePanel accessToken={accessToken} />
+            <GoalsPanel accessToken={accessToken} />
+            <SkillsPanel accessToken={accessToken} refreshKey={refreshKey} />
+            <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
+            <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} />
+            <GarminPanel accessToken={accessToken} onSyncStart={handleSyncStart} onSyncComplete={handleSyncComplete} />
           </div>
+        ) : (
+          <LoginForm onSubmit={handleLogin} />
+        )}
+      </div>
 
-          <HomeBasePanel accessToken={accessToken} />
-
-          <GoalsPanel accessToken={accessToken} />
-
-          <SkillsPanel accessToken={accessToken} refreshKey={refreshKey} />
-
-          <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
-
-          <GarminPanel accessToken={accessToken} onSyncComplete={handleSyncComplete} />
-        </div>
-      ) : (
-        <LoginForm onSubmit={handleLogin} />
+      {syncing && <SyncOverlay />}
+      {celebrationEvents.length > 0 && (
+        <LevelUpCelebration events={celebrationEvents} onDone={() => setCelebrationEvents([])} />
       )}
     </main>
   )

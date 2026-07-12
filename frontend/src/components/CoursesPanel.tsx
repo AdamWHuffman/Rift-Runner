@@ -6,6 +6,20 @@ interface CoursesPanelProps {
   refreshKey: number
 }
 
+function groupByRegion(courses: CourseProgressResponse[]): Map<string, CourseProgressResponse[]> {
+  const groups = new Map<string, CourseProgressResponse[]>()
+  for (const course of courses) {
+    const key = course.region_name
+    const list = groups.get(key)
+    if (list) {
+      list.push(course)
+    } else {
+      groups.set(key, [course])
+    }
+  }
+  return groups
+}
+
 function CoursesPanel({ accessToken, refreshKey }: CoursesPanelProps) {
   const [courses, setCourses] = useState<CourseProgressResponse[] | null>(null)
 
@@ -17,27 +31,47 @@ function CoursesPanel({ accessToken, refreshKey }: CoursesPanelProps) {
 
   if (!courses || courses.length === 0) return null
 
+  const regions = groupByRegion(courses)
+
   return (
-    <div className="courses-panel">
-      <h2>Courses</h2>
-      {courses.map((course) => (
-        <div key={course.course_id} className="course-card">
-          <strong>{course.name}</strong>
-          <span className="course-region">
-            {course.region_name} · {course.region_theme}
-          </span>
-          <p>
-            Mastery Level {course.level} · Difficulty {course.difficulty_rating} · Run {course.times_run}x
-          </p>
-          <div className="xp-bar xp-bar-small">
-            <div
-              className="xp-bar-fill"
-              style={{ width: `${Math.min(100, (course.xp_into_level / course.xp_to_next_level_snapshot) * 100)}%` }}
-            />
+    <section className="section">
+      <div className="section-head">
+        <span className="section-title">Courses</span>
+        <span className="section-sub">your routes, grouped by the region they belong to</span>
+      </div>
+      <div className="card region-list">
+        {Array.from(regions.entries()).map(([regionName, regionCourses]) => (
+          <div className="region-block" key={regionName}>
+            <div className="region-banner">
+              <span className="rname">{regionName}</span>
+              <span className="region-tag">{regionCourses[0].region_theme}</span>
+            </div>
+            {regionCourses.map((course) => {
+              const pct = Math.min(100, (course.xp_into_level / course.xp_to_next_level_snapshot) * 100)
+              return (
+                <div key={course.course_id} className="course-row">
+                  <span className="course-name">{course.name}</span>
+                  <div className="course-stats">
+                    <span>
+                      Mastery <b>Level {course.level}</b>
+                    </span>
+                    <span>
+                      Difficulty <b>{course.difficulty_rating}</b>
+                    </span>
+                    <span>
+                      Run <b>{course.times_run}×</b>
+                    </span>
+                  </div>
+                  <div className="course-bar">
+                    <div style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
           </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </section>
   )
 }
 

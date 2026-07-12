@@ -100,7 +100,7 @@ Two-tier: Tier 1 declarative rules (`rule_configs` table, not yet built) for sim
 4. Skills — ✅ complete (all 5, including Explorer)
 5. Courses & Regions — ✅ complete
 6. Goals — ✅ complete
-7. Gamified frontend polish — ⬜ not started
+7. Gamified frontend polish — ✅ complete (core dashboard experience; onboarding wizard & settings screen deferred)
 8. Auto-sync-on-load + weather — ⬜ not started (basic sync-trigger exists; the full "always sync on open" polish is pending)
 9. Cloud-deploy prep — ⬜ not started
 
@@ -165,6 +165,30 @@ Built: `Goal`/`UserGoalHistory` models, `users.active_goal_id`, `xp_transactions
 
 326 backend tests total, all passing (11 new this phase). Verified against the real docker compose stack: migration applied, all 4 goals seeded and confirmed via a real `GET /api/v1/goals` call; frontend goal picker confirmed working via a real Playwright screenshot against a throwaway test account (clicking "Base Building" correctly highlighted it as active, no console errors); active goal set to `base_building` on the real connected account via the real API (a sensible real default matching the user's actual stated fitness goal, left in place rather than reverted); goal-alignment multiplier verified against the real account's real synced activity's real HR-zone data (1.20x for a zone-2/3-heavy walk against the base_building target, computed identically by the pure formula and the full calculator, with `goal_id_at_time` correctly linked) via a dry-run that was rolled back to avoid persisting duplicate XP.
 
+### Phase 7 — Gamified Frontend Polish ✅ complete & verified
+The original plan named a "rogue RuneScape" visual direction, but that was always a placeholder for "make it feel fun," not a locked spec — so before building anything real, this phase ran an extended design-exploration loop using standalone HTML/CSS/JS mockups published as Artifacts (self-contained, no build step, safe to throw away), so the user could react to full visual directions before any React code was touched.
+
+**Directions explored, in order, each rejected or refined based on direct feedback:**
+1. Dark fantasy / gilded-frame MMO look (Cinzel/Pirata One, obsidian-and-gold) — rejected as "too dark."
+2. Bright flat "cutesy mobile game" (Fredoka/Nunito, candy colors) — never even shown; superseded before publishing by a same-session pivot to a new brief.
+3. **"Whimsified Reality"** — a light storybook lens over real places (Fraunces/Karla, warm cream/moss/gold/coral palette), built around a real mechanic: real observed features (a cobwebbed tunnel, a creek crossing, a flight path overhead) get reinterpreted as whimsical names ("Spider Cave," "Merrow's Ford") rather than an invented fantasy map. This tested well ("definitely closer") but went through several refinement rounds — a fog-of-war exploration map was prototyped then explicitly deferred ("that's a later design"), an attempt to add a recurring mascot character and small creature illustrations was tried and then explicitly rejected ("do not use them in the design").
+4. A colorful "video game feel" pass (Baloo 2, saturated toy colors, screen-shake/confetti-cannon level-up) — tried per explicit request to push the game-juice further, but the user preferred the calmer Whimsified Reality version overall ("I actually like this less, go back to previous").
+5. An "open-world quest board" pivot (themed biome pockets — Egyptian/Space/Pirate/Prehistoric/Jungle/Ice/Medieval/Western — each a toy-diorama "globe," a Quest Log reframing of the reskinning mechanic, objective checklists) — well-received as a concept and pushed further with real CC0 photography sourced from Kenney.nl for 4 of the 8 biomes, but the stock-photo style itself didn't land, and the biome/quest-zone concept was ultimately **backlogged** as a bigger feature than current scope (it doesn't map onto the backend's real region model, which generates one region per real GPS area, not a curated set of admin-picked biome themes).
+
+**Final direction shipped**: Whimsified Reality (direction 3, pre-character-additions) — Fraunces (display/voice) + Karla (body) via `@fontsource`, warm cream-to-mist gradient background, moss/gold/coral/sky/plum/teal accent palette, soft asymmetric-radius cards, no illustrated characters, gentle glow-ring level-up (no screen shake, no mascot).
+
+**Built for real** (not mockups — actual wired React components against actual backend data):
+- Global theme (`index.css`, `App.css`) replacing the Vite scaffold defaults entirely.
+- `LevelUpCelebration.tsx` — full-screen overlay, glow rings, a hand-rolled canvas particle system (soft glowing motes, not a confetti library — this reuses code proven out during the mockup phase rather than adding `canvas-confetti` as a dependency), a from→to level flip, and a **real event queue**: `sync_jobs.level_up_events` can contain multiple events (main + several skills + course) from one sync, and the component walks through them one at a time on tap/click, exactly matching the original plan's "queued if multiple fire at once" requirement. Verified firing two queued events in sequence via a temporary dev-only trigger button (added, screenshotted, then removed before commit).
+- `SyncOverlay.tsx` — full-screen spinner shown between `sync/trigger` and job completion.
+- `ActivityFeed.tsx` + new backend `GET /api/v1/activities` endpoint (`app/schemas/activity.py`, `app/api/v1/routers/activities.py`) — an expandable accordion list of recent activities; expanding one reveals the exact same transparent XP breakdown (base XP, each named multiplier, final XP) that `xp_transactions` has stored since Phase 3, fulfilling the plan's "doubles as an algorithm-debugging view" goal. Verified against the real account: correctly showed a historical activity's `goal_alignment: 1.0` because that activity was synced *before* the real account's goal was set — direct visual proof the append-only ledger design is working (old transactions never get retroactively rewritten).
+- `SkillsPanel.tsx`, `CoursesPanel.tsx` (now grouped under region banners), `GoalsPanel.tsx`, `HomeBasePanel.tsx`, `GarminPanel.tsx`, `LoginForm.tsx` — all restyled to the shared design system; no behavior changes.
+- Deliberate deviation from the original plan's tech list: **no Framer Motion, no `canvas-confetti`** — the mockup phase proved hand-rolled CSS keyframes + a small canvas particle loop achieve the same effect with zero added dependencies, so that's what shipped.
+
+**Explicitly deferred/backlogged** (per direct instruction to focus on core functionality rather than open-ended scope): the themed biome/quest-zone system from direction 5; a dedicated multi-step onboarding wizard (today's flow — connect Garmin / set home base / pick goal — still works, just isn't sequenced as a guided tour); a separate Settings screen (Garmin reconnect already lives inline in `GarminPanel`; a "units" preference doesn't exist on the backend yet).
+
+326 backend tests still passing (one new endpoint, no service-layer logic to unit test — verified via real HTTP against the Docker stack instead, matching this project's established convention of testing routers by real call rather than `TestClient`). Verified end-to-end via Playwright screenshots against a throwaway account: full dashboard render (no console errors), the level-up celebration firing and correctly advancing through a 2-event queue, and the activity accordion expanding to show a real multiplier breakdown. The real connected account's `GET /api/v1/activities` was also hit directly and returned correct real data.
+
 ### Infrastructure / tooling notes worth remembering
 - **Docker Desktop + WSL2 hot-reload gotcha**: Vite's dev server (and possibly uvicorn's `--reload`) doesn't reliably detect file edits made from the Windows side of the bind mount, even though the mount itself is live/correct. A `usePolling`/`WATCHFILES_FORCE_POLLING` fix was attempted but didn't fully resolve it for this project's Rolldown-based Vite. **Restart the frontend container after frontend edits** before verifying, rather than trusting hot-reload.
 - All shell commands in this project are run through WSL Ubuntu (`wsl -d Ubuntu -- bash ...`), per user preference for Linux tooling over native PowerShell. Nested-quote commands are unreliable through the PowerShell→wsl.exe→bash chain (Windows argv parsing mangles embedded double quotes) — writing throwaway `.sh` scripts to the scratchpad directory and executing them by path is the reliable pattern.
@@ -175,10 +199,11 @@ Built: `Goal`/`UserGoalHistory` models, `users.active_goal_id`, `xp_transactions
 - Real Garmin account connected (with MFA), real activity synced and generating real XP/leveling/skill/course/region data (main Level 2; all 5 skills tracking progress; 1 real course discovered in a real auto-named region).
 - 4 goals seeded; real account's active goal set to `base_building`, matching the user's actual stated fitness goal (low-injury-risk aerobic base building).
 - 326 backend tests passing.
-- Frontend shows: login, level/XP bar, home base panel, goal picker, skills grid, courses list, Garmin connect/sync panel. No real visual design yet (expected — that's Phase 7).
+- Frontend has a real visual design system ("Whimsified Reality" — Fraunces/Karla, warm storybook palette) applied across every screen: level/XP hero plaque, home base, goal picker, skills grid, region-grouped courses, an activity log with an expandable transparent XP breakdown, Garmin connect/sync, and a real animated level-up celebration (queued multi-event, canvas particles, no added dependencies) triggered off real sync results.
 
 ## What's Next
 - **Phase 2.5** — Manual FIT/GPX import fallback (insurance against Garmin breaking again) — still open, order relative to remaining phases not yet decided.
-- **Phase 7** — Gamified frontend polish (celebration flow, confetti, sound, "rogue RuneScape" visual language).
+- **Backlog** — Themed biome/quest-zone system explored during Phase 7's design phase (Egyptian/Space/Pirate/Prehistoric/Jungle/Ice/Medieval/Western pockets, a Quest Log framing) — well-received as a concept but needs real backend design work (it doesn't map onto the current one-region-per-real-place model) before it's buildable. Revisit once core functionality is further along.
+- **Backlog** — Onboarding wizard (sequence the existing connect-Garmin/home-base/goal-pick flow into a guided first-run tour) and a Settings screen (Garmin reconnect, units) — both named in the original Phase 7 scope but deferred to keep this phase focused on the core dashboard experience.
 - **Phase 8** — Auto-sync-on-load + weather (Open-Meteo heat index).
 - **Phase 9** — Cloud-deploy prep.

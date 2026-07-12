@@ -24,16 +24,10 @@ function LoginForm({ onSubmit }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="login-form">
+    <form onSubmit={handleSubmit} className="card form-card login-card">
       <label>
         Email
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="username"
-        />
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" />
       </label>
       <label>
         Password
@@ -45,10 +39,10 @@ function LoginForm({ onSubmit }: LoginFormProps) {
           autoComplete="current-password"
         />
       </label>
-      <button type="submit" disabled={submitting}>
+      <button type="submit" className="btn" disabled={submitting}>
         {submitting ? 'Logging in…' : 'Log in'}
       </button>
-      {error && <p className="login-error">{error}</p>}
+      {error && <p className="form-error">{error}</p>}
     </form>
   )
 }
