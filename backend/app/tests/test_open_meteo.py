@@ -54,15 +54,52 @@ def test_fetch_weather_at_computes_heat_index_for_hot_humid_conditions(monkeypat
     assert result.heat_index_c > result.temperature_c + 5
 
 
-def test_fetch_weather_at_heat_index_equals_temp_below_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_fetch_weather_at_apparent_temp_reflects_humidity_below_old_nws_floor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 25C/87% is below the old NWS-table floor (80F/26.7C) where heat index
+    # used to just equal raw temperature, discarding humidity entirely. The
+    # apparent-temperature formula should still show this as meaningfully
+    # warmer than the raw air temperature -- this is the real case that
+    # motivated the switch (a genuinely muggy day reading as "no bonus").
     monkeypatch.setattr(
-        httpx, "get", lambda *a, **k: FakeResponse(_hourly_payload("2026-07-11T01:00", 15.0, 50.0))
+        httpx, "get", lambda *a, **k: FakeResponse(_hourly_payload("2026-07-11T01:00", 25.0, 87.0))
     )
 
     result = open_meteo.fetch_weather_at(38.86, -77.05, datetime(2026, 7, 11, 1, 0, tzinfo=timezone.utc))
 
     assert result is not None
-    assert result.heat_index_c == pytest.approx(result.temperature_c)
+    assert result.heat_index_c > result.temperature_c + 3
+
+
+def test_fetch_weather_at_apparent_temp_stays_mild_when_cool_and_humid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Cool weather shouldn't cross the XP bonus threshold just because
+    # humidity is high -- 15C/90% should stay well under 26.7C.
+    monkeypatch.setattr(
+        httpx, "get", lambda *a, **k: FakeResponse(_hourly_payload("2026-07-11T01:00", 15.0, 90.0))
+    )
+
+    result = open_meteo.fetch_weather_at(38.86, -77.05, datetime(2026, 7, 11, 1, 0, tzinfo=timezone.utc))
+
+    assert result is not None
+    assert result.heat_index_c < 20.0
+
+
+def test_fetch_weather_at_apparent_temp_can_read_below_raw_temp_when_dry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Dry air feels cooler than the thermometer says (evaporative cooling) --
+    # confirms the formula isn't artificially floored at raw temperature.
+    monkeypatch.setattr(
+        httpx, "get", lambda *a, **k: FakeResponse(_hourly_payload("2026-07-11T01:00", 15.0, 30.0))
+    )
+
+    result = open_meteo.fetch_weather_at(38.86, -77.05, datetime(2026, 7, 11, 1, 0, tzinfo=timezone.utc))
+
+    assert result is not None
+    assert result.heat_index_c < result.temperature_c
 
 
 def test_fetch_weather_at_returns_none_on_network_error(monkeypatch: pytest.MonkeyPatch) -> None:

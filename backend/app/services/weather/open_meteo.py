@@ -4,6 +4,7 @@ geocode/theme lookups: any failure just means no weather bonus, never blocks
 sync.
 """
 
+import math
 from datetime import datetime, timezone
 
 import httpx
@@ -24,27 +25,25 @@ class WeatherResult:
         self.heat_index_c = heat_index_c
 
 
-def _heat_index_c(temp_c: float, humidity_pct: float) -> float:
-    """NWS Rothfusz regression (defined in Fahrenheit). Heat index is only
-    meaningfully different from air temperature above ~27C/80F -- below that
-    NWS convention is that heat index equals the actual temperature."""
-    temp_f = temp_c * 9 / 5 + 32
-    if temp_f < 80:
-        return temp_c
+def _apparent_temperature_c(temp_c: float, humidity_pct: float) -> float:
+    """Australian Bureau of Meteorology's Apparent Temperature (wind term
+    dropped -- we don't have reliable wind data at an activity's exact
+    location/time): AT = Ta + 0.33*e - 4.0, where e is water vapor pressure
+    derived from relative humidity.
 
-    rh = humidity_pct
-    hi_f = (
-        -42.379
-        + 2.04901523 * temp_f
-        + 10.14333127 * rh
-        - 0.22475541 * temp_f * rh
-        - 0.00683783 * temp_f * temp_f
-        - 0.05481717 * rh * rh
-        + 0.00122874 * temp_f * temp_f * rh
-        + 0.00085282 * temp_f * rh * rh
-        - 0.00000199 * temp_f * temp_f * rh * rh
-    )
-    return (hi_f - 32) * 5 / 9
+    Chosen over the NWS heat index table specifically because it's
+    continuous across the whole temperature range, rather than only being
+    defined above ~27C/80F with humidity treated as irrelevant below that.
+    A muggy 25C/87% day should (and now does) come out meaningfully warmer
+    than a dry 25C day -- the old NWS-table approach couldn't express that
+    at all below 80F, discarding humidity's contribution entirely in
+    exactly the range most real runs happen in. Dry/cool conditions can
+    legitimately come out *below* raw air temperature too (evaporative
+    cooling), which is fine -- heat_multiplier() never lets that read as a
+    penalty, just "further from the bonus threshold."
+    """
+    e = (humidity_pct / 100.0) * 6.105 * math.exp(17.27 * temp_c / (237.7 + temp_c))
+    return temp_c + 0.33 * e - 4.0
 
 
 def fetch_weather_at(lat: float, lon: float, when: datetime) -> WeatherResult | None:
@@ -84,5 +83,5 @@ def fetch_weather_at(lat: float, lon: float, when: datetime) -> WeatherResult | 
     return WeatherResult(
         temperature_c=temp_c,
         humidity_pct=humidity_pct,
-        heat_index_c=_heat_index_c(temp_c, humidity_pct),
+        heat_index_c=_apparent_temperature_c(temp_c, humidity_pct),
     )
