@@ -282,7 +282,12 @@
 }
 
 .login-card {
+  max-width: 360px;
   margin: 60px auto 0;
+}
+
+.login-mode-nav {
+  margin-bottom: 16px;
 }
 
 .btn {

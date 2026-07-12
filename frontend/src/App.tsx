@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
-import { API_BASE_URL, getCurrentUser, login, logout, refreshAccessToken, type ActivitySummaryResponse, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
+import { API_BASE_URL, getCurrentUser, login, logout, refreshAccessToken, register, type ActivitySummaryResponse, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
 import AccountPage from './components/AccountPage'
 import ActivitiesPage from './components/ActivitiesPage'
 import ActivityFeed from './components/ActivityFeed'
@@ -51,6 +51,13 @@ function App() {
 
   const handleLogin = async (email: string, password: string) => {
     const tokens = await login(email, password)
+    const me = await getCurrentUser(tokens.access_token)
+    setAccessToken(tokens.access_token)
+    setUser(me)
+  }
+
+  const handleRegister = async (email: string, password: string, displayName: string) => {
+    const tokens = await register(email, password, displayName)
     const me = await getCurrentUser(tokens.access_token)
     setAccessToken(tokens.access_token)
     setUser(me)
@@ -212,7 +219,7 @@ function App() {
             </>
           )
         ) : (
-          <LoginForm onSubmit={handleLogin} />
+          <LoginForm onSubmit={handleLogin} onRegister={handleRegister} />
         )}
       </div>
 

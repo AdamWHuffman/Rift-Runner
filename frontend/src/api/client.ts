@@ -184,6 +184,17 @@ export async function login(email: string, password: string): Promise<AccessToke
   return res.json()
 }
 
+export async function register(email: string, password: string, displayName: string): Promise<AccessTokenResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, password, display_name: displayName }),
+  })
+  if (!res.ok) throw new ApiError(await parseErrorDetail(res), res.status)
+  return res.json()
+}
+
 export async function getCurrentUser(accessToken: string): Promise<UserResponse> {
   return authedRequest<UserResponse>('/api/v1/auth/me', accessToken)
 }
