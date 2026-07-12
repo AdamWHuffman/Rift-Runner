@@ -23,6 +23,7 @@ async def set_home_base(
 
     region = await region_service.get_or_create_region_for_point(db, geo.lat, geo.lon, geo.display_name)
     current_user.home_region_id = region.id
+    current_user.units = "imperial" if geocode.is_likely_united_states(geo.lat, geo.lon) else "metric"
     await db.commit()
     return RegionResponse.model_validate(region)
 

@@ -15,8 +15,21 @@ export function formatDateTime(iso: string): string {
   })
 }
 
-export function formatDistance(meters: number): string {
+// Accepts the raw UserResponse.units string rather than a narrower literal
+// type -- anything other than exactly 'imperial' (including older/unset
+// values) safely defaults to metric.
+export function formatDistance(meters: number, units?: string): string {
+  if (units === 'imperial') {
+    return `${(meters / 1609.344).toFixed(1)} mi`
+  }
   return `${(meters / 1000).toFixed(1)} km`
+}
+
+export function formatElevation(meters: number, units?: string): string {
+  if (units === 'imperial') {
+    return `${Math.round(meters * 3.28084)} ft`
+  }
+  return `${Math.round(meters)} m`
 }
 
 export function formatDuration(seconds: number): string {

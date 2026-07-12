@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ActivitySummaryResponse } from '../api/client'
-import { MULTIPLIER_LABELS, celsiusToFahrenheit, formatDateTime, formatDistance, formatDuration } from '../utils/format'
+import { MULTIPLIER_LABELS, celsiusToFahrenheit, formatDateTime, formatDistance, formatDuration, formatElevation } from '../utils/format'
 import './PostActivityXPScreen.css'
 
 interface PostActivityXPScreenProps {
   activities: ActivitySummaryResponse[]
   onDone: () => void
+  units?: string
 }
 
 type Stage = 'stats' | 'multipliers' | 'final'
@@ -30,7 +31,7 @@ function targetForStage(
   return baseXp * applied
 }
 
-function PostActivityXPScreen({ activities, onDone }: PostActivityXPScreenProps) {
+function PostActivityXPScreen({ activities, onDone, units }: PostActivityXPScreenProps) {
   const [activityIndex, setActivityIndex] = useState(0)
   const [stage, setStage] = useState<Stage>('stats')
   const [multiplierIndex, setMultiplierIndex] = useState(0)
@@ -146,7 +147,7 @@ function PostActivityXPScreen({ activities, onDone }: PostActivityXPScreenProps)
 
         <div className="postxp-stats-grid">
           <div className="postxp-stat">
-            <span className="postxp-stat-v">{formatDistance(activity.distance_meters)}</span>
+            <span className="postxp-stat-v">{formatDistance(activity.distance_meters, units)}</span>
             <span className="postxp-stat-k">Distance</span>
           </div>
           <div className="postxp-stat">
@@ -155,7 +156,7 @@ function PostActivityXPScreen({ activities, onDone }: PostActivityXPScreenProps)
           </div>
           {activity.elevation_gain_meters > 0 && (
             <div className="postxp-stat">
-              <span className="postxp-stat-v">{Math.round(activity.elevation_gain_meters)} m</span>
+              <span className="postxp-stat-v">{formatElevation(activity.elevation_gain_meters, units)}</span>
               <span className="postxp-stat-k">Elevation</span>
             </div>
           )}

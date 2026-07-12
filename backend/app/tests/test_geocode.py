@@ -45,6 +45,23 @@ def test_geocode_address_returns_none_on_network_error(monkeypatch: pytest.Monke
     assert geocode.geocode_address("Arlington, VA") is None
 
 
+def test_is_likely_united_states_true_for_arlington_va() -> None:
+    assert geocode.is_likely_united_states(38.88, -77.09) is True
+
+
+def test_is_likely_united_states_true_for_alaska_and_hawaii() -> None:
+    assert geocode.is_likely_united_states(61.2, -149.9) is True  # Anchorage
+    assert geocode.is_likely_united_states(21.3, -157.85) is True  # Honolulu
+
+
+def test_is_likely_united_states_false_for_london() -> None:
+    assert geocode.is_likely_united_states(51.5, -0.13) is False
+
+
+def test_is_likely_united_states_false_for_mexico_city() -> None:
+    assert geocode.is_likely_united_states(19.43, -99.13) is False
+
+
 def test_detect_theme_prioritizes_water_over_hills(monkeypatch: pytest.MonkeyPatch) -> None:
     elements = [
         {"tags": {"natural": "peak"}},

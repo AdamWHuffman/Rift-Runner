@@ -5,9 +5,10 @@ import { MULTIPLIER_LABELS, celsiusToFahrenheit, formatDateTime, formatDistance,
 interface ActivityFeedProps {
   accessToken: string
   refreshKey: number
+  units?: string
 }
 
-function ActivityFeed({ accessToken, refreshKey }: ActivityFeedProps) {
+function ActivityFeed({ accessToken, refreshKey, units }: ActivityFeedProps) {
   const [activities, setActivities] = useState<ActivitySummaryResponse[] | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
@@ -42,7 +43,7 @@ function ActivityFeed({ accessToken, refreshKey }: ActivityFeedProps) {
                     {activity.is_personal_record && <span className="pr-badge">PR</span>}
                   </span>
                   <span className="activity-meta">
-                    {formatDateTime(activity.start_time)} · {formatDistance(activity.distance_meters)} ·{' '}
+                    {formatDateTime(activity.start_time)} · {formatDistance(activity.distance_meters, units)} ·{' '}
                     {formatDuration(activity.duration_seconds)}
                     {activity.avg_hr ? ` · avg HR ${activity.avg_hr}` : ''}
                     {activity.temperature_c != null ? ` · ${celsiusToFahrenheit(activity.temperature_c)}°F` : ''}

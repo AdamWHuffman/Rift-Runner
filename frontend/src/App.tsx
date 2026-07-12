@@ -172,7 +172,7 @@ function App() {
             <div className="sections dashboard-sections" style={view === 'dashboard' ? undefined : { display: 'none' }}>
               <HomeBasePanel accessToken={accessToken} />
               <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
-              <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} />
+              <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} units={user.units} />
               <GarminPanel
                 accessToken={accessToken}
                 syncNonce={syncNonce}
@@ -190,7 +190,7 @@ function App() {
       </div>
 
       {postActivityQueue.length > 0 && (
-        <PostActivityXPScreen activities={postActivityQueue} onDone={handlePostActivityDone} />
+        <PostActivityXPScreen activities={postActivityQueue} onDone={handlePostActivityDone} units={user?.units} />
       )}
       {celebrationEvents.length > 0 && (
         <LevelUpCelebration events={celebrationEvents} onDone={() => setCelebrationEvents([])} />

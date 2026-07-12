@@ -66,6 +66,21 @@ out tags 20;
 """
 
 
+def is_likely_united_states(lat: float, lon: float) -> bool:
+    """Rough bounding-box check (continental US, Alaska, Hawaii, Puerto
+    Rico) -- good enough to pick a sensible units default (imperial vs
+    metric) without an extra geocoding round-trip on every home-base save.
+    Known imprecision: southern Canada shares the same lat/lon band as the
+    northern US, so a home base there would misclassify as US. That's a
+    wrong-but-still-reasonable unit default, not worth a network call and
+    its own failure mode to avoid."""
+    conus = 24.5 <= lat <= 49.5 and -125.0 <= lon <= -66.9
+    alaska = 51.0 <= lat <= 71.5 and -179.5 <= lon <= -129.0
+    hawaii = 18.5 <= lat <= 22.5 and -160.5 <= lon <= -154.5
+    puerto_rico = 17.8 <= lat <= 18.6 and -67.5 <= lon <= -65.2
+    return conus or alaska or hawaii or puerto_rico
+
+
 def detect_theme(lat: float, lon: float) -> str:
     """Priority: riverlands > highlands > greenwood > metropolis (fallback
     when nothing distinctive is nearby, or the lookup fails/times out)."""
