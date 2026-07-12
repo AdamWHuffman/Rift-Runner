@@ -41,6 +41,7 @@ async def list_my_courses(
             xp_to_next_level_snapshot=progress.xp_to_next_level_snapshot,
             times_run=progress.times_run,
             best_time_seconds=progress.best_time_seconds,
+            polyline=course.canonical_polyline,
         )
         for progress, course, region in rows
     ]

@@ -3,6 +3,11 @@ import uuid
 from pydantic import BaseModel
 
 
+class LatLon(BaseModel):
+    lat: float
+    lon: float
+
+
 class CourseProgressResponse(BaseModel):
     course_id: uuid.UUID
     name: str
@@ -17,3 +22,4 @@ class CourseProgressResponse(BaseModel):
     xp_to_next_level_snapshot: float
     times_run: int
     best_time_seconds: float | None
+    polyline: list[LatLon]

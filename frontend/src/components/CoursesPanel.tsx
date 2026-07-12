@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getCourses, type CourseProgressResponse } from '../api/client'
+import CourseMap from './CourseMap'
 
 interface CoursesPanelProps {
   accessToken: string
@@ -64,6 +65,9 @@ function CoursesPanel({ accessToken, refreshKey }: CoursesPanelProps) {
                   </div>
                   <div className="course-bar">
                     <div style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="course-map-slot">
+                    <CourseMap polyline={course.polyline} theme={course.region_theme} />
                   </div>
                 </div>
               )

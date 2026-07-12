@@ -1,0 +1,30 @@
+.course-map {
+  margin-top: 12px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  position: relative;
+}
+
+.course-map-inner {
+  height: 220px;
+  width: 100%;
+  background: var(--paper-soft);
+}
+
+.course-map-attribution {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  z-index: 400;
+  font-size: 0.62rem;
+  color: var(--ink-soft);
+  background: rgba(255, 250, 240, 0.8);
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-family: var(--font-body);
+}
+
+.course-map-attribution a {
+  color: var(--ink-soft);
+}

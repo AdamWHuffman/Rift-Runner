@@ -66,6 +66,11 @@ export interface RegionResponse {
   theme: string
 }
 
+export interface LatLon {
+  lat: number
+  lon: number
+}
+
 export interface CourseProgressResponse {
   course_id: string
   name: string
@@ -80,6 +85,7 @@ export interface CourseProgressResponse {
   xp_to_next_level_snapshot: number
   times_run: number
   best_time_seconds: number | null
+  polyline: LatLon[]
 }
 
 export interface GoalResponse {
