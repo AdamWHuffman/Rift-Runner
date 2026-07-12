@@ -221,8 +221,34 @@ Two pieces named together in the original plan, both genuinely small once invest
 - 338 backend tests passing.
 - Frontend has a real visual design system ("Whimsified Reality" — Fraunces/Karla, warm storybook palette) applied across every screen: level/XP hero plaque, home base, goal picker, skills grid, region-grouped courses with real clickable-to-expand OpenStreetMap route maps, an activity log with an expandable transparent XP breakdown (now including real weather/heat context), Garmin connect/sync (now automatic on page load, debounced, with a cached-data toast on failure), and a real animated level-up celebration (queued multi-event, canvas particles, no added dependencies) triggered off real sync results.
 
+## Local Network Hosting (in place of Phase 9, for now)
+Phase 9 (cloud-deploy) is deferred until v1.0 is signed off, possibly later.
+In the meantime the app is hosted locally on the home network for two real
+users (multi-user support already existed structurally — this was config
+only, no code changes):
+- `.env`: `ALLOW_SIGNUP=true` (was `false`) so a second real account can
+  register itself; `CORS_ORIGINS` now also includes the host machine's LAN
+  origin (`http://<LAN-IP>:5173`) alongside `localhost:5173`.
+- `.env` / `docker-compose.yml`: added `VITE_API_BASE_URL`, now sourced from
+  `.env` (previously hardcoded to `http://localhost:8000` directly in the
+  compose file) — must be the host machine's **LAN IP**, not `localhost`,
+  since a phone's `localhost` refers to the phone itself. This is baked
+  into the frontend's served JS at container start, so it changes on
+  container recreate, not hot-reload.
+- Backend/frontend already bound to `0.0.0.0` and published their ports
+  (Phase 0 scaffold), and the refresh-token cookie already keys `secure` off
+  `ENVIRONMENT=local` (not off scheme), so plain-HTTP LAN access works
+  without further changes.
+- **Caveat**: the LAN IP is DHCP-assigned and can change; if the app stops
+  being reachable from other devices, re-check the host's IP and update
+  `VITE_API_BASE_URL`/`CORS_ORIGINS` in `.env`, then `docker compose up -d`
+  to recreate. Router/OS/Windows-Firewall-level network configuration was
+  left to the user.
+
 ## What's Next
-- **Phase 9** — Cloud-deploy prep.
+- Nothing scheduled — v1.0 is being used/dogfooded locally by two real
+  users. See Backlog for candidate follow-up work, and Phase 9
+  (cloud-deploy prep) once v1.0 is signed off.
 
 ## Backlog (not currently scheduled)
 - **Phase 2.5 — Manual FIT/GPX import fallback.** Insurance against Garmin's unofficial API breaking again (upload a `.fit`/`.gpx` export as a second ingestion path, tagged `source=manual_upload`, into the same `activities` table). Not urgent while Garmin sync is working; revisit if it breaks or before a public launch.
