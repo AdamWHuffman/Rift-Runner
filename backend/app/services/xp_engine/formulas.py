@@ -1,9 +1,8 @@
 """XP formula: a TRIMP-weighted effort base, times multiplicative bonus factors.
 
-course_difficulty and goal_alignment are stubbed at a neutral 1.0 in
-calculator.py -- Phase 5 (courses) and Phase 6 (goals) wire in real logic
-without needing to touch this module's shape or the formula's overall
-structure.
+goal_alignment is still stubbed at a neutral 1.0 in calculator.py -- Phase 6
+(goals) wires in real logic without needing to touch this module's shape or
+the formula's overall structure.
 """
 
 from app.models.activity import Activity
@@ -16,6 +15,10 @@ ELEVATION_MAX_BONUS = 0.5
 ELEVATION_SCALE = 0.01  # +1% per (meter of gain per km), up to the cap above
 
 PR_BONUS = 0.5  # flat +50% when Garmin flags this activity as a personal record
+
+COURSE_DIFFICULTY_MULTIPLIER_SCALE = 0.05
+COURSE_DIFFICULTY_MULTIPLIER_MIN = -0.2
+COURSE_DIFFICULTY_MULTIPLIER_MAX = 0.3
 
 
 def base_xp(activity: Activity) -> float:
@@ -46,3 +49,14 @@ def pr_bonus_multiplier(activity: Activity) -> float:
     time, pace, distance) once course tracking exists to compare against.
     """
     return 1.0 + PR_BONUS if activity.is_personal_record else 1.0
+
+
+def course_difficulty_multiplier(difficulty_rating: int | None, user_main_level: int) -> float:
+    """Tackling a course rated above your level pays more; an easy course
+    never fully zeroes out. Neutral (1.0) when the activity has no matched
+    course yet (e.g. no GPS data)."""
+    if difficulty_rating is None:
+        return 1.0
+    delta = (difficulty_rating - user_main_level) * COURSE_DIFFICULTY_MULTIPLIER_SCALE
+    bonus = max(COURSE_DIFFICULTY_MULTIPLIER_MIN, min(COURSE_DIFFICULTY_MULTIPLIER_MAX, delta))
+    return 1.0 + bonus

@@ -1,10 +1,11 @@
 """Orchestrates one activity -> base XP, multipliers, an xp_transactions
 row, and main-level leveling progress.
 
-xp_type="main" / target_key="main" is the only combination used this phase.
-Phase 4 (skills) and Phase 5 (course mastery) will call the same leveling
-primitive with their own target_key and their own independent EMA state,
-producing their own xp_transactions rows from the same activity.
+xp_type="main" / target_key="main" is the only combination used here. Skills
+(xp_engine/skills.py) and course mastery (course_engine/course_service.py)
+call the same leveling primitive with their own target_key and their own
+independent EMA state, producing their own xp_transactions rows from the
+same activity.
 """
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,14 +18,21 @@ from app.services.xp_engine import formulas, leveling
 FORMULA_VERSION = 1
 
 
-def process_activity(db: AsyncSession, user: User, activity: Activity) -> list[leveling.LevelUpEvent]:
+def process_activity(
+    db: AsyncSession, user: User, activity: Activity, course_difficulty_rating: int | None = None
+) -> list[leveling.LevelUpEvent]:
     """Compute and apply this activity's main XP. Does not commit -- the
-    caller controls the transaction boundary."""
+    caller controls the transaction boundary.
+
+    course_difficulty_rating should be this user's frozen difficulty rating
+    for the activity's matched course (course_service resolves this before
+    calling here), or None if the activity has no matched course yet.
+    """
     base = formulas.base_xp(activity)
     multipliers = {
         "elevation": formulas.elevation_multiplier(activity),
         "pr_bonus": formulas.pr_bonus_multiplier(activity),
-        "course_difficulty": 1.0,  # Phase 5 wires in real personalized course difficulty
+        "course_difficulty": formulas.course_difficulty_multiplier(course_difficulty_rating, user.main_level),
         "goal_alignment": 1.0,  # Phase 6 wires in real goal-based scoring
     }
     final_xp = base

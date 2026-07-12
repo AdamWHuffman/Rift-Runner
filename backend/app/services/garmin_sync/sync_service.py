@@ -9,6 +9,7 @@ from app.models.activity import Activity
 from app.models.garmin_credentials import GarminCredentials
 from app.models.sync_job import SyncJob
 from app.models.user import User
+from app.services.course_engine import course_service
 from app.services.garmin_sync import adapter, mapper
 from app.services.xp_engine import calculator, skills
 
@@ -62,10 +63,25 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
             continue
 
         activity = Activity(id=uuid.uuid4(), user_id=user_id, source="garmin_sync", **fields)
+        if fields["garmin_activity_id"] is not None:
+            activity.polyline = adapter.fetch_activity_polyline(client, fields["garmin_activity_id"])
         db.add(activity)
         synced_count += 1
 
-        for event in calculator.process_activity(db, user, activity):
+        course_result = await course_service.process_activity_course(db, user, activity)
+        activity._is_new_course_discovery = course_result.is_new_discovery
+        for event in course_result.level_ups:
+            level_up_events.append(
+                {
+                    "type": "course",
+                    "course_id": str(course_result.course.id) if course_result.course else None,
+                    "course_name": course_result.course.name if course_result.course else None,
+                    "from_level": event.from_level,
+                    "to_level": event.to_level,
+                }
+            )
+
+        for event in calculator.process_activity(db, user, activity, course_result.difficulty_rating):
             level_up_events.append({"type": "main", "from_level": event.from_level, "to_level": event.to_level})
 
         for skill_event in await skills.process_activity_skills(db, user, activity):

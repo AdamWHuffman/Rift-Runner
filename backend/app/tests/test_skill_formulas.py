@@ -122,3 +122,22 @@ def test_consistency_handles_out_of_order_history_defensively() -> None:
     today = _activity(start_time=datetime(2026, 7, 10, tzinfo=timezone.utc))
     xp = skill_formulas.consistency_skill_xp(today, [future_looking])
     assert xp == pytest.approx(skill_formulas.SKILL_BASE_XP * skill_formulas.CONSISTENCY_RATIO_CAP)
+
+
+# --- explorer ---
+
+
+def test_explorer_awards_xp_only_on_new_course_discovery() -> None:
+    activity = _activity()
+    activity._is_new_course_discovery = True
+    assert skill_formulas.explorer_skill_xp(activity, []) == skill_formulas.EXPLORER_DISCOVERY_XP
+
+
+def test_explorer_awards_nothing_for_a_repeat_run() -> None:
+    activity = _activity()
+    activity._is_new_course_discovery = False
+    assert skill_formulas.explorer_skill_xp(activity, []) == 0.0
+
+
+def test_explorer_awards_nothing_when_flag_is_absent() -> None:
+    assert skill_formulas.explorer_skill_xp(_activity(), []) == 0.0

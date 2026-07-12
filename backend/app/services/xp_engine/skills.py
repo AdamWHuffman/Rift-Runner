@@ -37,6 +37,7 @@ SKILL_CALCULATORS: dict[str, SkillCalculator] = {
     "endurance": skill_formulas.endurance_skill_xp,
     "health": skill_formulas.health_skill_xp,
     "consistency": skill_formulas.consistency_skill_xp,
+    "explorer": skill_formulas.explorer_skill_xp,
 }
 
 

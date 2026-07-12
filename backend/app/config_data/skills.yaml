@@ -8,3 +8,5 @@
   display_name: Health
 - key: consistency
   display_name: Consistency
+- key: explorer
+  display_name: Explorer

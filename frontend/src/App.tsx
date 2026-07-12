@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import { API_BASE_URL, getCurrentUser, login, type UserResponse } from './api/client'
+import CoursesPanel from './components/CoursesPanel'
 import GarminPanel from './components/GarminPanel'
+import HomeBasePanel from './components/HomeBasePanel'
 import LoginForm from './components/LoginForm'
 import SkillsPanel from './components/SkillsPanel'
 
@@ -9,7 +11,7 @@ function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [user, setUser] = useState<UserResponse | null>(null)
-  const [skillsRefreshKey, setSkillsRefreshKey] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/health`)
@@ -33,7 +35,7 @@ function App() {
   const handleSyncComplete = () => {
     if (!accessToken) return
     getCurrentUser(accessToken).then(setUser).catch(() => {})
-    setSkillsRefreshKey((key) => key + 1)
+    setRefreshKey((key) => key + 1)
   }
 
   return (
@@ -73,7 +75,11 @@ function App() {
             </p>
           </div>
 
-          <SkillsPanel accessToken={accessToken} refreshKey={skillsRefreshKey} />
+          <HomeBasePanel accessToken={accessToken} />
+
+          <SkillsPanel accessToken={accessToken} refreshKey={refreshKey} />
+
+          <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
 
           <GarminPanel accessToken={accessToken} onSyncComplete={handleSyncComplete} />
         </div>

@@ -70,3 +70,22 @@ def test_pr_bonus_multiplier_applies_flat_bonus_when_flagged() -> None:
 def test_pr_bonus_multiplier_neutral_when_not_a_pr() -> None:
     assert formulas.pr_bonus_multiplier(_activity(is_personal_record=False)) == pytest.approx(1.0)
     assert formulas.pr_bonus_multiplier(_activity(is_personal_record=None)) == pytest.approx(1.0)
+
+
+def test_course_difficulty_multiplier_neutral_when_no_course() -> None:
+    assert formulas.course_difficulty_multiplier(None, user_main_level=5) == pytest.approx(1.0)
+
+
+def test_course_difficulty_multiplier_rewards_harder_than_your_level() -> None:
+    # difficulty 20, user level 5 -> delta 15 * 0.05 = 0.75, capped at +0.3
+    assert formulas.course_difficulty_multiplier(20, user_main_level=5) == pytest.approx(1.3)
+
+
+def test_course_difficulty_multiplier_penalizes_easier_than_your_level() -> None:
+    # difficulty 5, user level 20 -> delta -15 * 0.05 = -0.75, floored at -0.2
+    assert formulas.course_difficulty_multiplier(5, user_main_level=20) == pytest.approx(0.8)
+
+
+def test_course_difficulty_multiplier_never_fully_zeroes_out() -> None:
+    multiplier = formulas.course_difficulty_multiplier(1, user_main_level=99)
+    assert multiplier >= 1.0 + formulas.COURSE_DIFFICULTY_MULTIPLIER_MIN

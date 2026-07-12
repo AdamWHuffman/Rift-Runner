@@ -15,6 +15,7 @@ building from the very first activity.
 from app.models.activity import Activity
 
 SKILL_BASE_XP = 150.0
+EXPLORER_DISCOVERY_XP = 200.0
 
 RATIO_FLOOR = 0.3
 SPEED_RATIO_CAP = 1.5
@@ -104,3 +105,16 @@ def consistency_skill_xp(activity: Activity, history: list[Activity]) -> float:
 
     ratio = max(RATIO_FLOOR, min(CONSISTENCY_RATIO_CAP, 2.0 - gap_days / 3.0))
     return SKILL_BASE_XP * ratio
+
+
+def explorer_skill_xp(activity: Activity, history: list[Activity]) -> float:
+    """Rewards discovering a brand-new course (and, by extension, possibly a
+    brand-new region too) -- first-time-only, unlike the other skills there
+    is no partial-credit floor here.
+
+    Reads a transient flag set by course_service earlier in the same sync
+    pass; deliberately never persisted on the Activity model since it's a
+    one-time signal about this processing run, not a lasting fact about the
+    activity itself.
+    """
+    return EXPLORER_DISCOVERY_XP if getattr(activity, "_is_new_course_discovery", False) else 0.0

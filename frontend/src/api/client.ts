@@ -50,6 +50,28 @@ export interface SkillProgressResponse {
   activities_this_level: number
 }
 
+export interface RegionResponse {
+  id: string
+  name: string
+  theme: string
+}
+
+export interface CourseProgressResponse {
+  course_id: string
+  name: string
+  activity_type: string
+  region_name: string
+  region_theme: string
+  distance_meters: number
+  elevation_gain_meters: number
+  difficulty_rating: number
+  level: number
+  xp_into_level: number
+  xp_to_next_level_snapshot: number
+  times_run: number
+  best_time_seconds: number | null
+}
+
 class ApiError extends Error {
   status: number
 
@@ -137,4 +159,19 @@ export async function getSyncJob(accessToken: string, jobId: string): Promise<Sy
 
 export async function getSkills(accessToken: string): Promise<SkillProgressResponse[]> {
   return authedRequest<SkillProgressResponse[]>('/api/v1/skills', accessToken)
+}
+
+export async function setHomeBase(accessToken: string, address: string): Promise<RegionResponse> {
+  return authedRequest<RegionResponse>('/api/v1/regions/home-base', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ address }),
+  })
+}
+
+export async function getHomeBase(accessToken: string): Promise<RegionResponse | null> {
+  return authedRequest<RegionResponse | null>('/api/v1/regions/home-base', accessToken)
+}
+
+export async function getCourses(accessToken: string): Promise<CourseProgressResponse[]> {
+  return authedRequest<CourseProgressResponse[]>('/api/v1/courses', accessToken)
 }

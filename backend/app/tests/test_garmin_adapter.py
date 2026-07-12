@@ -17,9 +17,10 @@ class FakeClient:
 
 
 class FakeGarmin:
-    def __init__(self, mfa_flow: bool = False) -> None:
+    def __init__(self, mfa_flow: bool = False, activity_details: dict | None = None) -> None:
         self.client = FakeClient()
         self.mfa_flow = mfa_flow
+        self.activity_details = activity_details or {}
 
     def login(self) -> tuple[str | None, None]:
         if self.mfa_flow:
@@ -30,6 +31,9 @@ class FakeGarmin:
         if mfa_code != "123456":
             raise Exception("invalid MFA code")
         return None, None
+
+    def get_activity_details(self, activity_id: str) -> dict:
+        return self.activity_details
 
 
 def _fake_garmin_factory(mfa_flow: bool):
@@ -107,3 +111,33 @@ def test_resume_raises_auth_error_on_bad_tokens(monkeypatch: pytest.MonkeyPatch)
 def test_serialize_deserialize_tokens_roundtrip() -> None:
     tokens = {"tokens": '{"di_token": "abc"}'}
     assert adapter.deserialize_tokens(adapter.serialize_tokens(tokens)) == tokens
+
+
+def test_fetch_activity_polyline_extracts_lat_lon() -> None:
+    client = FakeGarmin(
+        activity_details={
+            "geoPolylineDTO": {
+                "polyline": [
+                    {"lat": 38.86, "lon": -77.05, "altitude": None, "time": 123},
+                    {"lat": 38.87, "lon": -77.04, "altitude": None, "time": 456},
+                ]
+            }
+        }
+    )
+
+    points = adapter.fetch_activity_polyline(client, "12345")
+
+    assert points == [{"lat": 38.86, "lon": -77.05}, {"lat": 38.87, "lon": -77.04}]
+
+
+def test_fetch_activity_polyline_returns_none_when_missing() -> None:
+    client = FakeGarmin(activity_details={"geoPolylineDTO": {}})
+    assert adapter.fetch_activity_polyline(client, "12345") is None
+
+
+def test_fetch_activity_polyline_returns_none_on_error() -> None:
+    class BrokenClient:
+        def get_activity_details(self, activity_id: str) -> dict:
+            raise Exception("network error")
+
+    assert adapter.fetch_activity_polyline(BrokenClient(), "12345") is None

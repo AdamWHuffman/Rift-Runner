@@ -17,11 +17,14 @@ Confirmed against the installed `garminconnect` package source (not just docs):
 """
 
 import json
+import logging
 import time
 import uuid
 from datetime import date
 
 from garminconnect import Garmin
+
+logger = logging.getLogger(__name__)
 
 MFA_SESSION_TTL_SECONDS = 300
 
@@ -101,6 +104,25 @@ def fetch_activities_since(client: Garmin, since: date) -> list[dict]:
         return client.get_activities_by_date(since.isoformat(), date.today().isoformat())
     except Exception as exc:
         raise GarminSyncError(str(exc)) from exc
+
+
+def fetch_activity_polyline(client: Garmin, garmin_activity_id: str) -> list[dict[str, float]] | None:
+    """Best-effort GPS polyline fetch for course matching (Phase 5).
+
+    Unlike the other fetch_* functions, failures here don't raise -- a
+    missing polyline shouldn't fail an otherwise-successful activity sync,
+    it just means that activity can't be matched to a course yet.
+    """
+    try:
+        details = client.get_activity_details(garmin_activity_id)
+        points = details.get("geoPolylineDTO", {}).get("polyline")
+    except Exception as exc:
+        logger.debug("Polyline fetch failed for activity %s: %s", garmin_activity_id, exc)
+        return None
+
+    if not points:
+        return None
+    return [{"lat": p["lat"], "lon": p["lon"]} for p in points if p.get("lat") is not None and p.get("lon") is not None]
 
 
 def serialize_tokens(tokens: dict[str, str]) -> str:
