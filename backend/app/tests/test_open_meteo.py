@@ -102,6 +102,47 @@ def test_fetch_weather_at_apparent_temp_can_read_below_raw_temp_when_dry(
     assert result.heat_index_c < result.temperature_c
 
 
+def test_fetch_weather_at_averages_across_duration_when_it_spans_multiple_hours(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # 09:00=20C, 10:00=30C, 11:00=40C. An activity from 09:50 to 10:50 (one
+    # hour) spends 10 min in the 09:00 bucket and 50 min in the 10:00
+    # bucket -- the result should be much closer to 30C than a start-only
+    # sample (20C) would suggest.
+    monkeypatch.setattr(
+        httpx,
+        "get",
+        lambda *a, **k: FakeResponse(
+            {
+                "hourly": {
+                    "time": ["2026-07-11T09:00", "2026-07-11T10:00", "2026-07-11T11:00"],
+                    "temperature_2m": [20.0, 30.0, 40.0],
+                    "relative_humidity_2m": [50.0, 50.0, 50.0],
+                }
+            }
+        ),
+    )
+
+    result = open_meteo.fetch_weather_at(
+        38.86, -77.05, datetime(2026, 7, 11, 9, 50, tzinfo=timezone.utc), duration_seconds=3600.0
+    )
+
+    assert result is not None
+    # weighted: (10min*20 + 50min*30) / 60min = 28.33C
+    assert result.temperature_c == pytest.approx(28.333, abs=0.01)
+
+
+def test_fetch_weather_at_without_duration_samples_single_start_hour(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        httpx, "get", lambda *a, **k: FakeResponse(_hourly_payload("2026-07-11T01:00", 30.0, 70.0))
+    )
+
+    result = open_meteo.fetch_weather_at(38.86, -77.05, datetime(2026, 7, 11, 1, 0, tzinfo=timezone.utc))
+
+    assert result is not None
+    assert result.temperature_c == pytest.approx(30.0)
+
+
 def test_fetch_weather_at_returns_none_on_network_error(monkeypatch: pytest.MonkeyPatch) -> None:
     def raise_error(*a, **k):
         raise httpx.ConnectTimeout("timed out")

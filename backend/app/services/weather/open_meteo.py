@@ -5,7 +5,7 @@ sync.
 """
 
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -46,9 +46,16 @@ def _apparent_temperature_c(temp_c: float, humidity_pct: float) -> float:
     return temp_c + 0.33 * e - 4.0
 
 
-def fetch_weather_at(lat: float, lon: float, when: datetime) -> WeatherResult | None:
+def fetch_weather_at(lat: float, lon: float, when: datetime, duration_seconds: float = 0.0) -> WeatherResult | None:
+    """Weighted average of every hourly sample the activity's actual
+    [start, start+duration) window overlaps, weighted by how many seconds of
+    each hour it spans -- not just a single point-sample at the start. A run
+    that starts at 9:50 and continues into the 10:00 hour should mostly
+    reflect the 10:00 reading, not the 9:00 one. duration_seconds<=0 (or
+    omitted) falls back to sampling the single hour containing `when`."""
     now = datetime.now(timezone.utc)
     when_utc = when.astimezone(timezone.utc) if when.tzinfo else when.replace(tzinfo=timezone.utc)
+    end_utc = when_utc + timedelta(seconds=duration_seconds if duration_seconds > 0 else 1.0)
     days_ago = (now.date() - when_utc.date()).days
     if days_ago < 0 or days_ago > MAX_PAST_DAYS:
         return None
@@ -73,12 +80,32 @@ def fetch_weather_at(lat: float, lon: float, when: datetime) -> WeatherResult | 
 
     try:
         hourly = data["hourly"]
-        target = when_utc.strftime("%Y-%m-%dT%H:00")
-        index = hourly["time"].index(target)
-        temp_c = float(hourly["temperature_2m"][index])
-        humidity_pct = float(hourly["relative_humidity_2m"][index])
-    except (KeyError, ValueError, IndexError, TypeError):
+        times = hourly["time"]
+        temps = hourly["temperature_2m"]
+        humidities = hourly["relative_humidity_2m"]
+    except (KeyError, TypeError):
         return None
+
+    weighted_temp = 0.0
+    weighted_humidity = 0.0
+    total_weight = 0.0
+    for time_str, temp_c, humidity_pct in zip(times, temps, humidities):
+        try:
+            bucket_start = datetime.strptime(time_str, "%Y-%m-%dT%H:%M").replace(tzinfo=timezone.utc)
+        except (ValueError, TypeError):
+            continue
+        overlap_seconds = (min(end_utc, bucket_start + timedelta(hours=1)) - max(when_utc, bucket_start)).total_seconds()
+        if overlap_seconds <= 0:
+            continue
+        weighted_temp += float(temp_c) * overlap_seconds
+        weighted_humidity += float(humidity_pct) * overlap_seconds
+        total_weight += overlap_seconds
+
+    if total_weight <= 0:
+        return None
+
+    temp_c = weighted_temp / total_weight
+    humidity_pct = weighted_humidity / total_weight
 
     return WeatherResult(
         temperature_c=temp_c,

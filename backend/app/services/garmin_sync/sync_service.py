@@ -100,7 +100,10 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
 
         if activity.start_point:
             weather = open_meteo.fetch_weather_at(
-                activity.start_point["lat"], activity.start_point["lon"], activity.start_time
+                activity.start_point["lat"],
+                activity.start_point["lon"],
+                activity.start_time,
+                activity.duration_seconds,
             )
             if weather is not None:
                 activity.temperature_c = weather.temperature_c
