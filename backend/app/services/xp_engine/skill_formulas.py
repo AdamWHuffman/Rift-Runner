@@ -12,6 +12,8 @@ no history yet gets a flat baseline award rather than zero, so skills start
 building from the very first activity.
 """
 
+from datetime import datetime
+
 from app.models.activity import Activity
 
 SKILL_BASE_XP = 150.0
@@ -94,6 +96,17 @@ def health_skill_xp(activity: Activity, history: list[Activity]) -> float:
     return SKILL_BASE_XP * ratio
 
 
+def _naive_utc(when: datetime) -> datetime:
+    """start_time is always semantically UTC throughout this codebase (see
+    mapper._parse_garmin_datetime), but SQLite -- unlike Postgres -- doesn't
+    reliably round-trip the tzinfo label on a DateTime(timezone=True) column,
+    so a value freshly reloaded from the DB can come back naive even though
+    a same-session cached object stays aware. Stripping tzinfo from both
+    sides before subtracting keeps this correct either way, since removing a
+    UTC label doesn't change the underlying wall-clock value."""
+    return when.replace(tzinfo=None) if when.tzinfo is not None else when
+
+
 def consistency_skill_xp(activity: Activity, history: list[Activity]) -> float:
     """Rewards showing up again soon after the last activity (any type) --
     the direct habit-loop lever. A broken streak still earns the floor."""
@@ -101,7 +114,7 @@ def consistency_skill_xp(activity: Activity, history: list[Activity]) -> float:
         return SKILL_BASE_XP
 
     most_recent = max(history, key=lambda a: a.start_time)
-    gap_days = max(0.0, (activity.start_time - most_recent.start_time).total_seconds() / 86400.0)
+    gap_days = max(0.0, (_naive_utc(activity.start_time) - _naive_utc(most_recent.start_time)).total_seconds() / 86400.0)
 
     ratio = max(RATIO_FLOOR, min(CONSISTENCY_RATIO_CAP, 2.0 - gap_days / 3.0))
     return SKILL_BASE_XP * ratio

@@ -1,0 +1,94 @@
+.activities-import-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.import-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.import-picker-head {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.import-loading,
+.import-empty {
+  font-size: 0.85rem;
+  font-style: italic;
+  font-family: var(--font-voice);
+  color: var(--ink-soft);
+}
+
+.import-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.import-row label {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.import-row label:hover {
+  background: var(--paper-soft);
+}
+
+.import-row-name {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.import-row-meta {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.import-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.activities-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.activities-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.activities-manage-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.activities-manage-confirm {
+  display: flex;
+  gap: 8px;
+}

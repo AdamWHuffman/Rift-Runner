@@ -276,8 +276,33 @@ export async function setActiveGoal(accessToken: string, goalKey: string): Promi
   })
 }
 
-export async function getActivities(accessToken: string): Promise<ActivitySummaryResponse[]> {
-  return authedRequest<ActivitySummaryResponse[]>('/api/v1/activities', accessToken)
+export async function getActivities(accessToken: string, limit?: number): Promise<ActivitySummaryResponse[]> {
+  const query = limit ? `?limit=${limit}` : ''
+  return authedRequest<ActivitySummaryResponse[]>(`/api/v1/activities${query}`, accessToken)
+}
+
+export interface ImportableActivityResponse {
+  garmin_activity_id: string
+  activity_name: string | null
+  activity_type: string
+  start_time: string
+  distance_meters: number
+  duration_seconds: number
+}
+
+export async function deleteActivity(accessToken: string, activityId: string): Promise<UserResponse> {
+  return authedRequest<UserResponse>(`/api/v1/activities/${activityId}`, accessToken, { method: 'DELETE' })
+}
+
+export async function getImportableActivities(accessToken: string): Promise<ImportableActivityResponse[]> {
+  return authedRequest<ImportableActivityResponse[]>('/api/v1/activities/importable', accessToken)
+}
+
+export async function importActivities(accessToken: string, garminActivityIds: string[]): Promise<UserResponse> {
+  return authedRequest<UserResponse>('/api/v1/activities/import', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ garmin_activity_ids: garminActivityIds }),
+  })
 }
 
 export async function resetAccount(accessToken: string, confirm: string): Promise<UserResponse> {

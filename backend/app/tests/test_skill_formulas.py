@@ -124,6 +124,25 @@ def test_consistency_handles_out_of_order_history_defensively() -> None:
     assert xp == pytest.approx(skill_formulas.SKILL_BASE_XP * skill_formulas.CONSISTENCY_RATIO_CAP)
 
 
+def test_consistency_handles_a_naive_history_timestamp() -> None:
+    # SQLite (unlike Postgres) doesn't reliably round-trip tzinfo on a
+    # DateTime(timezone=True) column, so a freshly-reloaded Activity's
+    # start_time can come back naive even though start_time is always
+    # semantically UTC. Must not raise, and must give the same answer as
+    # the all-aware case.
+    yesterday_naive = _activity(start_time=datetime(2026, 7, 9))
+    today = _activity(start_time=datetime(2026, 7, 10, tzinfo=timezone.utc))
+    xp = skill_formulas.consistency_skill_xp(today, [yesterday_naive])
+    assert xp == pytest.approx(skill_formulas.SKILL_BASE_XP * skill_formulas.CONSISTENCY_RATIO_CAP)
+
+
+def test_consistency_handles_a_naive_current_activity_timestamp() -> None:
+    yesterday = _activity(start_time=datetime(2026, 7, 9, tzinfo=timezone.utc))
+    today_naive = _activity(start_time=datetime(2026, 7, 10))
+    xp = skill_formulas.consistency_skill_xp(today_naive, [yesterday])
+    assert xp == pytest.approx(skill_formulas.SKILL_BASE_XP * skill_formulas.CONSISTENCY_RATIO_CAP)
+
+
 # --- explorer ---
 
 

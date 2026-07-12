@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { API_BASE_URL, getCurrentUser, login, logout, refreshAccessToken, type ActivitySummaryResponse, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
 import AccountPage from './components/AccountPage'
+import ActivitiesPage from './components/ActivitiesPage'
 import ActivityFeed from './components/ActivityFeed'
 import CoursesPanel from './components/CoursesPanel'
 import GarminPanel from './components/GarminPanel'
@@ -12,7 +13,7 @@ import OnboardingWizard from './components/OnboardingWizard'
 import PostActivityXPScreen from './components/PostActivityXPScreen'
 import Toast from './components/Toast'
 
-type View = 'dashboard' | 'account'
+type View = 'dashboard' | 'account' | 'activities'
 
 function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
@@ -101,6 +102,11 @@ function App() {
     setSyncNonce((n) => n + 1)
   }
 
+  const handleActivitiesChanged = (updated: UserResponse) => {
+    setUser(updated)
+    setRefreshKey((key) => key + 1)
+  }
+
   const xpPct = user ? Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100) : 0
   const needsOnboarding = user !== null && !user.onboarding_completed_at
 
@@ -160,6 +166,13 @@ function App() {
                 >
                   Account
                 </button>
+                <button
+                  type="button"
+                  className={`app-nav-tab${view === 'activities' ? ' active' : ''}`}
+                  onClick={() => setView('activities')}
+                >
+                  Activities
+                </button>
               </nav>
             </>
           )}
@@ -187,6 +200,14 @@ function App() {
               </div>
               {view === 'account' && (
                 <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
+              )}
+              {view === 'activities' && (
+                <ActivitiesPage
+                  accessToken={accessToken}
+                  units={user.units}
+                  refreshKey={refreshKey}
+                  onUserUpdate={handleActivitiesChanged}
+                />
               )}
             </>
           )

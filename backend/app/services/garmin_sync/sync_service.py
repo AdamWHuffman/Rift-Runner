@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
+from garminconnect import Garmin
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,36 @@ DEFAULT_LOOKBACK = timedelta(days=30)
 # Only used as a cold-start fallback (see below) -- deliberately much wider
 # than DEFAULT_LOOKBACK since its job is to find *something* to seed from.
 COLD_START_LOOKBACK = timedelta(days=365)
+# How far before account creation the manual-import picker (activities.py)
+# is willing to look for activities that predate this app entirely.
+IMPORT_LOOKBACK = timedelta(days=21)
+
+
+def build_activity_from_fields(user_id: uuid.UUID, fields: dict, client: Garmin, source: str = "garmin_sync") -> Activity:
+    """Turn one mapper.map_activity() result into an Activity row, complete
+    with its GPS polyline and weather -- everything that needs the live
+    Garmin client or an external lookup. Shared by the regular sync loop
+    below and the manual-import endpoint, which both need exactly this and
+    nothing else (import defers all XP/course/skill processing to a single
+    recalculate_service.recalculate_all() call afterward instead of
+    processing incrementally like a live sync does)."""
+    activity = Activity(id=uuid.uuid4(), user_id=user_id, source=source, **fields)
+    if fields["garmin_activity_id"] is not None:
+        activity.polyline = adapter.fetch_activity_polyline(client, fields["garmin_activity_id"])
+
+    if activity.start_point:
+        weather = open_meteo.fetch_weather_at(
+            activity.start_point["lat"],
+            activity.start_point["lon"],
+            activity.start_time,
+            activity.duration_seconds,
+        )
+        if weather is not None:
+            activity.temperature_c = weather.temperature_c
+            activity.humidity_pct = weather.humidity_pct
+            activity.heat_index_c = weather.heat_index_c
+
+    return activity
 
 
 async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> SyncJob:
@@ -91,24 +122,10 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
         if existing is not None:
             continue
 
-        activity = Activity(id=uuid.uuid4(), user_id=user_id, source="garmin_sync", **fields)
-        if fields["garmin_activity_id"] is not None:
-            activity.polyline = adapter.fetch_activity_polyline(client, fields["garmin_activity_id"])
+        activity = build_activity_from_fields(user_id, fields, client)
         db.add(activity)
         synced_count += 1
         new_activity_ids.append(str(activity.id))
-
-        if activity.start_point:
-            weather = open_meteo.fetch_weather_at(
-                activity.start_point["lat"],
-                activity.start_point["lon"],
-                activity.start_time,
-                activity.duration_seconds,
-            )
-            if weather is not None:
-                activity.temperature_c = weather.temperature_c
-                activity.humidity_pct = weather.humidity_pct
-                activity.heat_index_c = weather.heat_index_c
 
         course_result = await course_service.process_activity_course(db, user, activity)
         activity._is_new_course_discovery = course_result.is_new_discovery

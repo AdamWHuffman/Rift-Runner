@@ -17,6 +17,19 @@ class SkillXPResponse(BaseModel):
     final_xp: float
 
 
+class ImportableActivityResponse(BaseModel):
+    garmin_activity_id: str
+    activity_name: str | None
+    activity_type: str
+    start_time: datetime
+    distance_meters: float
+    duration_seconds: float
+
+
+class ImportActivitiesRequest(BaseModel):
+    garmin_activity_ids: list[str]
+
+
 class ActivitySummaryResponse(BaseModel):
     id: uuid.UUID
     activity_name: str | None
