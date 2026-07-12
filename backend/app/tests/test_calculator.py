@@ -6,9 +6,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity
+from app.models.goal import Goal
 from app.models.user import User
 from app.models.xp_transaction import XPTransaction
-from app.services.xp_engine import calculator
+from app.services.xp_engine import calculator, formulas
 
 # Precise elevation multiplier for the default _activity() fixture (60m gain
 # over 5.2km) -- the plan's "1.115" worked example rounds this for readability.
@@ -119,3 +120,43 @@ async def test_process_activity_applies_pr_bonus(db_session: AsyncSession, test_
     assert txn is not None
     assert txn.multipliers["pr_bonus"] == pytest.approx(1.5)
     assert txn.final_xp == round(760.0 * ELEVATION_MULTIPLIER * 1.5)
+
+
+async def test_process_activity_applies_active_goal_alignment(db_session: AsyncSession, test_user: User) -> None:
+    goal = Goal(
+        key="base_building",
+        display_name="Base Building",
+        description="test",
+        zone_weight_targets=[0.20, 0.35, 0.30, 0.10, 0.05],
+    )
+    db_session.add(goal)
+    await db_session.flush()
+
+    activity = _activity(test_user.id, garmin_activity_id=5)
+    db_session.add(activity)
+    await db_session.flush()
+
+    calculator.process_activity(db_session, test_user, activity, active_goal=goal)
+    await db_session.commit()
+
+    txn = await db_session.scalar(select(XPTransaction).where(XPTransaction.activity_id == activity.id))
+    assert txn is not None
+    expected = formulas.goal_alignment_multiplier(activity.hr_seconds_in_zone, goal.zone_weight_targets)
+    assert txn.multipliers["goal_alignment"] == pytest.approx(expected)
+    assert txn.goal_id_at_time == goal.id
+
+
+async def test_process_activity_goal_alignment_neutral_without_active_goal(
+    db_session: AsyncSession, test_user: User
+) -> None:
+    activity = _activity(test_user.id, garmin_activity_id=6)
+    db_session.add(activity)
+    await db_session.flush()
+
+    calculator.process_activity(db_session, test_user, activity)
+    await db_session.commit()
+
+    txn = await db_session.scalar(select(XPTransaction).where(XPTransaction.activity_id == activity.id))
+    assert txn is not None
+    assert txn.multipliers["goal_alignment"] == pytest.approx(1.0)
+    assert txn.goal_id_at_time is None

@@ -99,7 +99,7 @@ Two-tier: Tier 1 declarative rules (`rule_configs` table, not yet built) for sim
 3. Core XP & main leveling — ✅ complete
 4. Skills — ✅ complete (all 5, including Explorer)
 5. Courses & Regions — ✅ complete
-6. Goals — ⬜ not started (next up)
+6. Goals — ✅ complete
 7. Gamified frontend polish — ⬜ not started
 8. Auto-sync-on-load + weather — ⬜ not started (basic sync-trigger exists; the full "always sync on open" polish is pending)
 9. Cloud-deploy prep — ⬜ not started
@@ -153,6 +153,18 @@ Frontend: added a basic (intentionally unstyled — Phase 7 will make it pretty)
 
 315 backend tests total, all passing (46 new this phase). Verified against the real docker compose stack end-to-end: re-synced the connected account's real activity through the complete pipeline — auto-created a real region ("The Millrace Reaches", correctly classified riverlands near the Potomac/Four Mile Run), discovered a course named after the real Garmin activity ("Arlington County Walking"), computed a real personalized difficulty rating (39), awarded course mastery XP and Explorer skill XP on first discovery. Verified all new endpoints via real HTTP, including that submitting "Arlington, VA" as a home base through a live browser correctly reused the same auto-created region instead of creating a duplicate (the 10km-radius reuse logic working as designed). Screenshot-confirmed via Playwright.
 
+### Phase 6 — Goals ✅ complete & verified
+This phase was explicitly the least-defined part of the original plan, so per the user's direction ("stop and ask me" if there are open questions), implementation paused for clarification before any code was written. Four questions were asked and answered before proceeding:
+
+1. **Goal taxonomy** — the user's actual current goal ("improve health, run/walk more, sustain longer runs, but stay in low HR zones to prevent injury") didn't cleanly fit the original plan's three goals, so a **4th goal, `base_building`, was added** rather than overloading `general_health`.
+2. **HR zone strictness** — the user corrected the initial framing: zones 1-3 are all aerobic and should all be rewarded reasonably; only zones 4-5 (anaerobic) should be de-emphasized, and even then only de-emphasized, not zeroed out, since brief anaerobic bursts are healthy. All 4 goals' `zone_weight_targets` were tuned around this real exercise-science distinction rather than a flat "low HR good, high HR bad" rule.
+3. **Multi-goal** — single active goal per user at a time (not multiple simultaneous goals), switchable, with `user_goal_history` tracking every activation/deactivation so past XP stays meaningful even after switching.
+4. **Skill/PR dampening** — the user was explicit that skills (including Speed) and the PR bonus should **not** be dampened by the active goal ("skills are just nice to have... speed generally will increase with any training"). Only the main-XP `goal_alignment` multiplier is goal-aware; this matches the original plan's design exactly, so no changes were needed there.
+
+Built: `Goal`/`UserGoalHistory` models, `users.active_goal_id`, `xp_transactions.goal_id_at_time` (append-only — every XP transaction records which goal was active when it was earned, so switching goals never retroactively changes history's meaning), migration `0007_goals`. `config_data/goals.yaml` seeds all 4 goals with real target HR-zone-time distributions. `formulas.goal_alignment_multiplier()` compares actual zone-time fractions to the active goal's target vector via L1 distance, mapped to a 0.7x-1.3x multiplier (neutral 1.0x when no HR data or no active goal). `goal_engine/goal_service.py` handles switching (closes out the previous open history row, opens a new one). Wired into `calculator.process_activity()` and `sync_service`. `GET /goals`, `GET /goals/active`, `POST /goals/active` endpoints; frontend `GoalsPanel` (card grid, click to switch, active goal highlighted).
+
+326 backend tests total, all passing (11 new this phase). Verified against the real docker compose stack: migration applied, all 4 goals seeded and confirmed via a real `GET /api/v1/goals` call; frontend goal picker confirmed working via a real Playwright screenshot against a throwaway test account (clicking "Base Building" correctly highlighted it as active, no console errors); active goal set to `base_building` on the real connected account via the real API (a sensible real default matching the user's actual stated fitness goal, left in place rather than reverted); goal-alignment multiplier verified against the real account's real synced activity's real HR-zone data (1.20x for a zone-2/3-heavy walk against the base_building target, computed identically by the pure formula and the full calculator, with `goal_id_at_time` correctly linked) via a dry-run that was rolled back to avoid persisting duplicate XP.
+
 ### Infrastructure / tooling notes worth remembering
 - **Docker Desktop + WSL2 hot-reload gotcha**: Vite's dev server (and possibly uvicorn's `--reload`) doesn't reliably detect file edits made from the Windows side of the bind mount, even though the mount itself is live/correct. A `usePolling`/`WATCHFILES_FORCE_POLLING` fix was attempted but didn't fully resolve it for this project's Rolldown-based Vite. **Restart the frontend container after frontend edits** before verifying, rather than trusting hot-reload.
 - All shell commands in this project are run through WSL Ubuntu (`wsl -d Ubuntu -- bash ...`), per user preference for Linux tooling over native PowerShell. Nested-quote commands are unreliable through the PowerShell→wsl.exe→bash chain (Windows argv parsing mangles embedded double quotes) — writing throwaway `.sh` scripts to the scratchpad directory and executing them by path is the reliable pattern.
@@ -161,11 +173,12 @@ Frontend: added a basic (intentionally unstyled — Phase 7 will make it pretty)
 ## Current State (as of last update)
 - Stack running via `docker compose up`: postgres, redis, backend (FastAPI + arq worker), frontend (Vite/React/TS) — all healthy.
 - Real Garmin account connected (with MFA), real activity synced and generating real XP/leveling/skill/course/region data (main Level 2; all 5 skills tracking progress; 1 real course discovered in a real auto-named region).
-- 315 backend tests passing.
-- Frontend shows: login, level/XP bar, home base panel, skills grid, courses list, Garmin connect/sync panel. No real visual design yet (expected — that's Phase 7).
+- 4 goals seeded; real account's active goal set to `base_building`, matching the user's actual stated fitness goal (low-injury-risk aerobic base building).
+- 326 backend tests passing.
+- Frontend shows: login, level/XP bar, home base panel, goal picker, skills grid, courses list, Garmin connect/sync panel. No real visual design yet (expected — that's Phase 7).
 
 ## What's Next
-- **Phase 6** — Goals (general_health / endurance_building / performance_racing, goal-alignment multiplier wired into the main XP formula where it's currently stubbed at 1.0).
 - **Phase 2.5** — Manual FIT/GPX import fallback (insurance against Garmin breaking again) — still open, order relative to remaining phases not yet decided.
-
-Then Phase 7 (gamified frontend polish), 8 (auto-sync-on-load + weather), 9 (cloud-deploy prep) per the original roadmap above.
+- **Phase 7** — Gamified frontend polish (celebration flow, confetti, sound, "rogue RuneScape" visual language).
+- **Phase 8** — Auto-sync-on-load + weather (Open-Meteo heat index).
+- **Phase 9** — Cloud-deploy prep.

@@ -89,3 +89,53 @@ def test_course_difficulty_multiplier_penalizes_easier_than_your_level() -> None
 def test_course_difficulty_multiplier_never_fully_zeroes_out() -> None:
     multiplier = formulas.course_difficulty_multiplier(1, user_main_level=99)
     assert multiplier >= 1.0 + formulas.COURSE_DIFFICULTY_MULTIPLIER_MIN
+
+
+# --- goal_alignment_multiplier ---
+
+BASE_BUILDING_TARGETS = [0.20, 0.35, 0.30, 0.10, 0.05]
+
+
+def test_goal_alignment_neutral_without_hr_data() -> None:
+    assert formulas.goal_alignment_multiplier(None, BASE_BUILDING_TARGETS) == pytest.approx(1.0)
+    assert formulas.goal_alignment_multiplier({}, BASE_BUILDING_TARGETS) == pytest.approx(1.0)
+
+
+def test_goal_alignment_neutral_without_active_goal() -> None:
+    assert formulas.goal_alignment_multiplier({"1": 600, "2": 600}, None) == pytest.approx(1.0)
+
+
+def test_goal_alignment_maximal_when_distribution_matches_exactly() -> None:
+    # Exactly matches base_building's [0.20, 0.35, 0.30, 0.10, 0.05] target.
+    zones = {"1": 200.0, "2": 350.0, "3": 300.0, "4": 100.0, "5": 50.0}  # sums to 1000
+    multiplier = formulas.goal_alignment_multiplier(zones, BASE_BUILDING_TARGETS, 0.7, 1.3)
+    assert multiplier == pytest.approx(1.3, abs=1e-6)
+
+
+def test_goal_alignment_minimal_when_distribution_is_opposite() -> None:
+    # All time in zone 5, but base_building wants mostly zone 1-3.
+    zones = {"5": 1000.0}
+    multiplier = formulas.goal_alignment_multiplier(zones, BASE_BUILDING_TARGETS, 0.7, 1.3)
+    assert multiplier == pytest.approx(0.7, abs=0.05)
+
+
+def test_goal_alignment_rewards_easy_effort_for_base_building_but_not_racing() -> None:
+    # A very easy, all-zone-2 activity: great for base_building, mediocre for racing.
+    easy_zones = {"2": 1000.0}
+    racing_targets = [0.05, 0.10, 0.20, 0.35, 0.30]
+
+    base_building_score = formulas.goal_alignment_multiplier(easy_zones, BASE_BUILDING_TARGETS)
+    racing_score = formulas.goal_alignment_multiplier(easy_zones, racing_targets)
+
+    assert base_building_score > racing_score
+
+
+def test_goal_alignment_zone_three_scores_well_for_base_building() -> None:
+    # User's own correction: zone 3 is still aerobic and should be rewarded
+    # nearly as well as zone 2 for base_building, unlike zones 4-5.
+    zone_two = formulas.goal_alignment_multiplier({"2": 1000.0}, BASE_BUILDING_TARGETS)
+    zone_three = formulas.goal_alignment_multiplier({"3": 1000.0}, BASE_BUILDING_TARGETS)
+    zone_five = formulas.goal_alignment_multiplier({"5": 1000.0}, BASE_BUILDING_TARGETS)
+
+    assert zone_three == pytest.approx(zone_two, abs=0.15)
+    assert zone_three > zone_five

@@ -72,6 +72,14 @@ export interface CourseProgressResponse {
   best_time_seconds: number | null
 }
 
+export interface GoalResponse {
+  id: string
+  key: string
+  display_name: string
+  description: string
+  zone_weight_targets: number[]
+}
+
 class ApiError extends Error {
   status: number
 
@@ -174,4 +182,19 @@ export async function getHomeBase(accessToken: string): Promise<RegionResponse |
 
 export async function getCourses(accessToken: string): Promise<CourseProgressResponse[]> {
   return authedRequest<CourseProgressResponse[]>('/api/v1/courses', accessToken)
+}
+
+export async function getGoals(accessToken: string): Promise<GoalResponse[]> {
+  return authedRequest<GoalResponse[]>('/api/v1/goals', accessToken)
+}
+
+export async function getActiveGoal(accessToken: string): Promise<GoalResponse | null> {
+  return authedRequest<GoalResponse | null>('/api/v1/goals/active', accessToken)
+}
+
+export async function setActiveGoal(accessToken: string, goalKey: string): Promise<GoalResponse> {
+  return authedRequest<GoalResponse>('/api/v1/goals/active', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ goal_key: goalKey }),
+  })
 }

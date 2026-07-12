@@ -3,6 +3,7 @@ import './App.css'
 import { API_BASE_URL, getCurrentUser, login, type UserResponse } from './api/client'
 import CoursesPanel from './components/CoursesPanel'
 import GarminPanel from './components/GarminPanel'
+import GoalsPanel from './components/GoalsPanel'
 import HomeBasePanel from './components/HomeBasePanel'
 import LoginForm from './components/LoginForm'
 import SkillsPanel from './components/SkillsPanel'
@@ -76,6 +77,8 @@ function App() {
           </div>
 
           <HomeBasePanel accessToken={accessToken} />
+
+          <GoalsPanel accessToken={accessToken} />
 
           <SkillsPanel accessToken={accessToken} refreshKey={refreshKey} />
 

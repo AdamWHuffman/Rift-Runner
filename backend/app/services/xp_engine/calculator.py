@@ -11,6 +11,7 @@ same activity.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.activity import Activity
+from app.models.goal import Goal
 from app.models.user import User
 from app.models.xp_transaction import XPTransaction
 from app.services.xp_engine import formulas, leveling
@@ -19,7 +20,11 @@ FORMULA_VERSION = 1
 
 
 def process_activity(
-    db: AsyncSession, user: User, activity: Activity, course_difficulty_rating: int | None = None
+    db: AsyncSession,
+    user: User,
+    activity: Activity,
+    course_difficulty_rating: int | None = None,
+    active_goal: Goal | None = None,
 ) -> list[leveling.LevelUpEvent]:
     """Compute and apply this activity's main XP. Does not commit -- the
     caller controls the transaction boundary.
@@ -27,13 +32,20 @@ def process_activity(
     course_difficulty_rating should be this user's frozen difficulty rating
     for the activity's matched course (course_service resolves this before
     calling here), or None if the activity has no matched course yet.
+    active_goal is the user's currently active Goal row, or None if they
+    haven't set one -- goal_alignment stays neutral either way.
     """
     base = formulas.base_xp(activity)
     multipliers = {
         "elevation": formulas.elevation_multiplier(activity),
         "pr_bonus": formulas.pr_bonus_multiplier(activity),
         "course_difficulty": formulas.course_difficulty_multiplier(course_difficulty_rating, user.main_level),
-        "goal_alignment": 1.0,  # Phase 6 wires in real goal-based scoring
+        "goal_alignment": formulas.goal_alignment_multiplier(
+            activity.hr_seconds_in_zone,
+            active_goal.zone_weight_targets if active_goal else None,
+            active_goal.multiplier_min if active_goal else 0.7,
+            active_goal.multiplier_max if active_goal else 1.3,
+        ),
     }
     final_xp = base
     for value in multipliers.values():
@@ -69,6 +81,7 @@ def process_activity(
             formula_version=FORMULA_VERSION,
             level_before=level_before,
             level_after=result.state.level,
+            goal_id_at_time=active_goal.id if active_goal else None,
         )
     )
 

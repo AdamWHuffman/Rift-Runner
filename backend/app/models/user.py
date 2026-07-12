@@ -19,6 +19,7 @@ class User(Base):
     timezone: Mapped[str] = mapped_column(String(50), nullable=False, default="UTC")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     home_region_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("regions.id"), nullable=True)
+    active_goal_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("goals.id"), nullable=True)
 
     main_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     main_xp_total: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

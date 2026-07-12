@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.crypto import decrypt
 from app.models.activity import Activity
 from app.models.garmin_credentials import GarminCredentials
+from app.models.goal import Goal
 from app.models.sync_job import SyncJob
 from app.models.user import User
 from app.services.course_engine import course_service
@@ -49,6 +50,8 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
     user = await db.get(User, user_id)
     assert user is not None, f"user {user_id} not found"
 
+    active_goal = await db.get(Goal, user.active_goal_id) if user.active_goal_id else None
+
     synced_count = 0
     level_up_events: list[dict] = []
     for raw in raw_activities:
@@ -81,7 +84,7 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
                 }
             )
 
-        for event in calculator.process_activity(db, user, activity, course_result.difficulty_rating):
+        for event in calculator.process_activity(db, user, activity, course_result.difficulty_rating, active_goal):
             level_up_events.append({"type": "main", "from_level": event.from_level, "to_level": event.to_level})
 
         for skill_event in await skills.process_activity_skills(db, user, activity):

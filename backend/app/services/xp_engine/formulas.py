@@ -1,9 +1,4 @@
-"""XP formula: a TRIMP-weighted effort base, times multiplicative bonus factors.
-
-goal_alignment is still stubbed at a neutral 1.0 in calculator.py -- Phase 6
-(goals) wires in real logic without needing to touch this module's shape or
-the formula's overall structure.
-"""
+"""XP formula: a TRIMP-weighted effort base, times multiplicative bonus factors."""
 
 from app.models.activity import Activity
 
@@ -60,3 +55,32 @@ def course_difficulty_multiplier(difficulty_rating: int | None, user_main_level:
     delta = (difficulty_rating - user_main_level) * COURSE_DIFFICULTY_MULTIPLIER_SCALE
     bonus = max(COURSE_DIFFICULTY_MULTIPLIER_MIN, min(COURSE_DIFFICULTY_MULTIPLIER_MAX, delta))
     return 1.0 + bonus
+
+
+def goal_alignment_multiplier(
+    hr_seconds_in_zone: dict | None,
+    zone_weight_targets: list[float] | None,
+    multiplier_min: float = 0.7,
+    multiplier_max: float = 1.3,
+) -> float:
+    """Compares this activity's actual HR-zone-time distribution to the
+    user's active goal's target distribution -- a closer match pays more.
+    Neutral (1.0) with no HR data or no active goal, so this never punishes
+    users who haven't set a goal yet or activities without HR data.
+
+    Similarity is 1 minus the normalized L1 distance between the two
+    5-element distributions (each summing to ~1.0), linearly mapped into the
+    goal's [multiplier_min, multiplier_max] range.
+    """
+    if not hr_seconds_in_zone or not zone_weight_targets:
+        return 1.0
+
+    total_seconds = sum(hr_seconds_in_zone.values())
+    if total_seconds <= 0:
+        return 1.0
+
+    actual_fractions = [hr_seconds_in_zone.get(str(zone), 0.0) / total_seconds for zone in range(1, 6)]
+    l1_distance = sum(abs(a - t) for a, t in zip(actual_fractions, zone_weight_targets))
+    similarity = max(0.0, 1.0 - l1_distance / 2.0)
+
+    return multiplier_min + similarity * (multiplier_max - multiplier_min)

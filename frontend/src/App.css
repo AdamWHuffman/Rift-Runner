@@ -101,3 +101,39 @@
   font-size: 0.75rem;
   opacity: 0.75;
 }
+
+.goals-panel {
+  width: 280px;
+  margin: 16px 0;
+}
+
+.goals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #33333333;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  text-align: left;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.goal-card-active {
+  border-color: #34d399;
+  border-width: 2px;
+}
+
+.goal-description {
+  font-size: 0.75rem;
+  opacity: 0.75;
+}

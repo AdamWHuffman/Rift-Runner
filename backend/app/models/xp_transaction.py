@@ -27,6 +27,9 @@ class XPTransaction(Base):
     base_xp: Mapped[float] = mapped_column(Float, nullable=False)
     multipliers: Mapped[dict] = mapped_column(JSON, nullable=False)
     final_xp: Mapped[float] = mapped_column(Float, nullable=False)
+    # Which goal was active when this was earned, if any -- only set on
+    # xp_type="main" rows, since goals don't influence skill/course XP.
+    goal_id_at_time: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("goals.id"), nullable=True)
     formula_version: Mapped[int] = mapped_column(Integer, nullable=False)
     level_before: Mapped[int] = mapped_column(Integer, nullable=False)
     level_after: Mapped[int] = mapped_column(Integer, nullable=False)
