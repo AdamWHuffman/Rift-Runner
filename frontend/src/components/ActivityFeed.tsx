@@ -9,6 +9,7 @@ interface ActivityFeedProps {
 const MULTIPLIER_LABELS: Record<string, string> = {
   elevation: 'Elevation',
   pr_bonus: 'Personal record',
+  heat: 'Heat',
   course_difficulty: 'Course difficulty',
   goal_alignment: 'Goal alignment',
 }
@@ -20,6 +21,10 @@ function formatDistance(meters: number): string {
 function formatDuration(seconds: number): string {
   const minutes = Math.round(seconds / 60)
   return `${minutes} min`
+}
+
+function celsiusToFahrenheit(celsius: number): number {
+  return Math.round((celsius * 9) / 5 + 32)
 }
 
 function ActivityFeed({ accessToken, refreshKey }: ActivityFeedProps) {
@@ -60,6 +65,11 @@ function ActivityFeed({ accessToken, refreshKey }: ActivityFeedProps) {
                     {new Date(activity.start_time).toLocaleDateString()} · {formatDistance(activity.distance_meters)} ·{' '}
                     {formatDuration(activity.duration_seconds)}
                     {activity.avg_hr ? ` · avg HR ${activity.avg_hr}` : ''}
+                    {activity.temperature_c != null ? ` · ${celsiusToFahrenheit(activity.temperature_c)}°F` : ''}
+                    {activity.heat_index_c != null &&
+                    Math.round(activity.heat_index_c) !== Math.round(activity.temperature_c ?? activity.heat_index_c)
+                      ? ` (feels ${celsiusToFahrenheit(activity.heat_index_c)}°F)`
+                      : ''}
                   </span>
                   {activity.course_name && (
                     <span className="activity-course">

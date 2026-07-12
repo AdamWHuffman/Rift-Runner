@@ -91,6 +91,31 @@ def test_course_difficulty_multiplier_never_fully_zeroes_out() -> None:
     assert multiplier >= 1.0 + formulas.COURSE_DIFFICULTY_MULTIPLIER_MIN
 
 
+# --- heat_multiplier ---
+
+
+def test_heat_multiplier_neutral_when_no_weather_data() -> None:
+    assert formulas.heat_multiplier(None) == pytest.approx(1.0)
+
+
+def test_heat_multiplier_neutral_below_caution_threshold() -> None:
+    # A comfortable 20C day shouldn't get a bonus, only genuinely hot ones.
+    assert formulas.heat_multiplier(20.0) == pytest.approx(1.0)
+    assert formulas.heat_multiplier(formulas.HEAT_INDEX_THRESHOLD_C) == pytest.approx(1.0)
+
+
+def test_heat_multiplier_scales_linearly_between_caution_and_danger() -> None:
+    midpoint = (formulas.HEAT_INDEX_THRESHOLD_C + formulas.HEAT_INDEX_DANGER_C) / 2
+    multiplier = formulas.heat_multiplier(midpoint)
+    assert multiplier == pytest.approx(1.0 + formulas.HEAT_MAX_BONUS / 2)
+
+
+def test_heat_multiplier_caps_at_max_bonus_for_dangerous_heat() -> None:
+    assert formulas.heat_multiplier(formulas.HEAT_INDEX_DANGER_C) == pytest.approx(1.0 + formulas.HEAT_MAX_BONUS)
+    # Even more extreme heat doesn't pay more than the cap.
+    assert formulas.heat_multiplier(50.0) == pytest.approx(1.0 + formulas.HEAT_MAX_BONUS)
+
+
 # --- goal_alignment_multiplier ---
 
 BASE_BUILDING_TARGETS = [0.20, 0.35, 0.30, 0.10, 0.05]

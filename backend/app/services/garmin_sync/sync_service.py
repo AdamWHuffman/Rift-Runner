@@ -12,6 +12,7 @@ from app.models.sync_job import SyncJob
 from app.models.user import User
 from app.services.course_engine import course_service
 from app.services.garmin_sync import adapter, mapper
+from app.services.weather import open_meteo
 from app.services.xp_engine import calculator, skills
 
 SYNC_OVERLAP = timedelta(hours=2)
@@ -70,6 +71,15 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
             activity.polyline = adapter.fetch_activity_polyline(client, fields["garmin_activity_id"])
         db.add(activity)
         synced_count += 1
+
+        if activity.start_point:
+            weather = open_meteo.fetch_weather_at(
+                activity.start_point["lat"], activity.start_point["lon"], activity.start_time
+            )
+            if weather is not None:
+                activity.temperature_c = weather.temperature_c
+                activity.humidity_pct = weather.humidity_pct
+                activity.heat_index_c = weather.heat_index_c
 
         course_result = await course_service.process_activity_course(db, user, activity)
         activity._is_new_course_discovery = course_result.is_new_discovery

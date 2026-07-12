@@ -39,6 +39,7 @@ def process_activity(
     multipliers = {
         "elevation": formulas.elevation_multiplier(activity),
         "pr_bonus": formulas.pr_bonus_multiplier(activity),
+        "heat": formulas.heat_multiplier(activity.heat_index_c),
         "course_difficulty": formulas.course_difficulty_multiplier(course_difficulty_rating, user.main_level),
         "goal_alignment": formulas.goal_alignment_multiplier(
             activity.hr_seconds_in_zone,

@@ -61,6 +61,8 @@ async def list_my_activities(
                 is_personal_record=activity.is_personal_record,
                 course_name=course.name if course else None,
                 region_name=region.name if region else None,
+                temperature_c=activity.temperature_c,
+                heat_index_c=activity.heat_index_c,
                 main_xp=XPBreakdownResponse(
                     base_xp=main_txn.base_xp,
                     multipliers=main_txn.multipliers,

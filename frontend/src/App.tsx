@@ -10,6 +10,7 @@ import LevelUpCelebration from './components/LevelUpCelebration'
 import LoginForm from './components/LoginForm'
 import SkillsPanel from './components/SkillsPanel'
 import SyncOverlay from './components/SyncOverlay'
+import Toast from './components/Toast'
 
 function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
@@ -18,6 +19,7 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [syncing, setSyncing] = useState(false)
   const [celebrationEvents, setCelebrationEvents] = useState<LevelUpEvent[]>([])
+  const [toast, setToast] = useState<string | null>(null)
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/health`)
@@ -50,6 +52,11 @@ function App() {
     if (job.level_up_events && job.level_up_events.length > 0) {
       setCelebrationEvents(job.level_up_events)
     }
+  }
+
+  const handleSyncFailed = () => {
+    setSyncing(false)
+    setToast('Could not reach Garmin — showing cached data')
   }
 
   const xpPct = user ? Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100) : 0
@@ -103,7 +110,12 @@ function App() {
             <SkillsPanel accessToken={accessToken} refreshKey={refreshKey} />
             <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
             <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} />
-            <GarminPanel accessToken={accessToken} onSyncStart={handleSyncStart} onSyncComplete={handleSyncComplete} />
+            <GarminPanel
+              accessToken={accessToken}
+              onSyncStart={handleSyncStart}
+              onSyncComplete={handleSyncComplete}
+              onSyncFailed={handleSyncFailed}
+            />
           </div>
         ) : (
           <LoginForm onSubmit={handleLogin} />
@@ -114,6 +126,7 @@ function App() {
       {celebrationEvents.length > 0 && (
         <LevelUpCelebration events={celebrationEvents} onDone={() => setCelebrationEvents([])} />
       )}
+      {toast && <Toast message={toast} onDismiss={() => setToast(null)} />}
     </main>
   )
 }

@@ -122,6 +122,32 @@ async def test_process_activity_applies_pr_bonus(db_session: AsyncSession, test_
     assert txn.final_xp == round(760.0 * ELEVATION_MULTIPLIER * 1.5)
 
 
+async def test_process_activity_applies_heat_multiplier(db_session: AsyncSession, test_user: User) -> None:
+    activity = _activity(test_user.id, garmin_activity_id=7, heat_index_c=40.0)
+    db_session.add(activity)
+    await db_session.flush()
+
+    calculator.process_activity(db_session, test_user, activity)
+    await db_session.commit()
+
+    txn = await db_session.scalar(select(XPTransaction).where(XPTransaction.activity_id == activity.id))
+    assert txn is not None
+    assert txn.multipliers["heat"] == pytest.approx(1.25)
+
+
+async def test_process_activity_heat_neutral_without_weather_data(db_session: AsyncSession, test_user: User) -> None:
+    activity = _activity(test_user.id, garmin_activity_id=8)
+    db_session.add(activity)
+    await db_session.flush()
+
+    calculator.process_activity(db_session, test_user, activity)
+    await db_session.commit()
+
+    txn = await db_session.scalar(select(XPTransaction).where(XPTransaction.activity_id == activity.id))
+    assert txn is not None
+    assert txn.multipliers["heat"] == pytest.approx(1.0)
+
+
 async def test_process_activity_applies_active_goal_alignment(db_session: AsyncSession, test_user: User) -> None:
     goal = Goal(
         key="base_building",

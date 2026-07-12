@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   completeGarminMfa,
   connectGarmin,
@@ -13,9 +13,10 @@ interface GarminPanelProps {
   accessToken: string
   onSyncStart?: () => void
   onSyncComplete?: (job: SyncJobResponse) => void
+  onSyncFailed?: (message: string) => void
 }
 
-function GarminPanel({ accessToken, onSyncStart, onSyncComplete }: GarminPanelProps) {
+function GarminPanel({ accessToken, onSyncStart, onSyncComplete, onSyncFailed }: GarminPanelProps) {
   const [status, setStatus] = useState<GarminStatusResponse | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -24,6 +25,7 @@ function GarminPanel({ accessToken, onSyncStart, onSyncComplete }: GarminPanelPr
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [job, setJob] = useState<SyncJobResponse | null>(null)
+  const autoSyncedRef = useRef(false)
 
   const refreshStatus = () => {
     getGarminStatus(accessToken)
@@ -40,11 +42,12 @@ function GarminPanel({ accessToken, onSyncStart, onSyncComplete }: GarminPanelPr
         .then((updated) => {
           setJob(updated)
           if (updated.status === 'complete') onSyncComplete?.(updated)
+          if (updated.status === 'failed') onSyncFailed?.(updated.error_message ?? 'Sync failed')
         })
         .catch(() => {})
     }, 1200)
     return () => clearInterval(interval)
-  }, [job, accessToken, onSyncComplete])
+  }, [job, accessToken, onSyncComplete, onSyncFailed])
 
   const handleConnect = async (e: FormEvent) => {
     e.preventDefault()
@@ -90,9 +93,23 @@ function GarminPanel({ accessToken, onSyncStart, onSyncComplete }: GarminPanelPr
       const result = await triggerSync(accessToken)
       setJob(result)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start sync')
+      const message = err instanceof Error ? err.message : 'Could not start sync'
+      setError(message)
+      onSyncFailed?.(message)
     }
   }
+
+  // Sync on every page load (debounced server-side -- see sync.py's
+  // DEBOUNCE_WINDOW -- so this never hammers Garmin on rapid reloads). The
+  // ref guards against React StrictMode's dev-only double-effect-invoke
+  // firing this twice on the same mount.
+  useEffect(() => {
+    if (!status || autoSyncedRef.current) return
+    if (!status.connected || status.status === 'needs_reauth') return
+    autoSyncedRef.current = true
+    handleSync()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status])
 
   if (status === null) {
     return null

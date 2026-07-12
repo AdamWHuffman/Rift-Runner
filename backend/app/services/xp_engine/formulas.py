@@ -15,6 +15,10 @@ COURSE_DIFFICULTY_MULTIPLIER_SCALE = 0.05
 COURSE_DIFFICULTY_MULTIPLIER_MIN = -0.2
 COURSE_DIFFICULTY_MULTIPLIER_MAX = 0.3
 
+HEAT_INDEX_THRESHOLD_C = 26.7  # 80F, NWS "Caution" heat index threshold -- below this, no bonus
+HEAT_INDEX_DANGER_C = 40.0  # 104F, NWS "Danger" threshold -- bonus is fully ramped up by here
+HEAT_MAX_BONUS = 0.25
+
 
 def base_xp(activity: Activity) -> float:
     """TRIMP-weighted effort (heart-rate zone time, weighted by zone) when HR
@@ -55,6 +59,21 @@ def course_difficulty_multiplier(difficulty_rating: int | None, user_main_level:
     delta = (difficulty_rating - user_main_level) * COURSE_DIFFICULTY_MULTIPLIER_SCALE
     bonus = max(COURSE_DIFFICULTY_MULTIPLIER_MIN, min(COURSE_DIFFICULTY_MULTIPLIER_MAX, delta))
     return 1.0 + bonus
+
+
+def heat_multiplier(heat_index_c: float | None) -> float:
+    """Exercising in genuine heat is objectively harder on the body, so it
+    pays a bonus -- up to +25% at NWS "Danger" heat index levels (104F/40C).
+    Below the NWS "Caution" threshold (80F/26.7C) it's neutral (1.0): comfort-
+    range weather doesn't get penalized, it just doesn't get a bonus. Neutral
+    whenever the weather lookup failed or wasn't attempted (e.g. no GPS
+    start point), same as every other best-effort multiplier here.
+    """
+    if heat_index_c is None or heat_index_c <= HEAT_INDEX_THRESHOLD_C:
+        return 1.0
+    span = HEAT_INDEX_DANGER_C - HEAT_INDEX_THRESHOLD_C
+    progress = min(1.0, (heat_index_c - HEAT_INDEX_THRESHOLD_C) / span)
+    return 1.0 + progress * HEAT_MAX_BONUS
 
 
 def goal_alignment_multiplier(

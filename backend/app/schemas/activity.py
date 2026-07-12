@@ -29,5 +29,7 @@ class ActivitySummaryResponse(BaseModel):
     is_personal_record: bool | None
     course_name: str | None
     region_name: str | None
+    temperature_c: float | None
+    heat_index_c: float | None
     main_xp: XPBreakdownResponse | None
     skill_xp: list[SkillXPResponse]

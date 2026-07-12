@@ -121,6 +121,8 @@ export interface ActivitySummaryResponse {
   is_personal_record: boolean | null
   course_name: string | null
   region_name: string | null
+  temperature_c: number | null
+  heat_index_c: number | null
   main_xp: XPBreakdown | null
   skill_xp: SkillXP[]
 }

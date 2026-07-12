@@ -44,6 +44,11 @@ class Activity(Base):
     start_geohash: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
     end_geohash: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
     course_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("courses.id"), nullable=True)
+    # Best-effort, from Open-Meteo at sync time -- never blocks sync on failure,
+    # same graceful-degradation pattern as region_engine's geocode/theme lookups.
+    temperature_c: Mapped[float | None] = mapped_column(Float, nullable=True)
+    humidity_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    heat_index_c: Mapped[float | None] = mapped_column(Float, nullable=True)
     raw_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     processing_status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
