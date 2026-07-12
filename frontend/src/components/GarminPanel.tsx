@@ -92,6 +92,12 @@ function GarminPanel({ accessToken, onSyncStart, onSyncComplete, onSyncFailed }:
       onSyncStart?.()
       const result = await triggerSync(accessToken)
       setJob(result)
+      // The debounced trigger endpoint can hand back an already-terminal job
+      // (e.g. a sync that completed moments ago) instead of a fresh 'queued'
+      // one -- the polling effect below never sees that job change, so it
+      // has to be handled here too or onSyncStart's overlay never clears.
+      if (result.status === 'complete') onSyncComplete?.(result)
+      if (result.status === 'failed') onSyncFailed?.(result.error_message ?? 'Sync failed')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not start sync'
       setError(message)

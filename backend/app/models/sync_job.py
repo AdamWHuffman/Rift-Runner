@@ -18,4 +18,8 @@ class SyncJob(Base):
     activities_synced_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     level_up_events: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # IDs (as strings) of activities newly inserted by this job -- lets the
+    # frontend show a per-activity XP reveal without re-deriving "which
+    # activities were new" from timestamps.
+    new_activity_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

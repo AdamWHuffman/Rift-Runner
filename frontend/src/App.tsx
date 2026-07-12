@@ -1,25 +1,30 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
-import { API_BASE_URL, getCurrentUser, login, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
+import { API_BASE_URL, getCurrentUser, login, type ActivitySummaryResponse, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
+import AccountPage from './components/AccountPage'
 import ActivityFeed from './components/ActivityFeed'
 import CoursesPanel from './components/CoursesPanel'
 import GarminPanel from './components/GarminPanel'
-import GoalsPanel from './components/GoalsPanel'
 import HomeBasePanel from './components/HomeBasePanel'
 import LevelUpCelebration from './components/LevelUpCelebration'
 import LoginForm from './components/LoginForm'
-import SkillsPanel from './components/SkillsPanel'
+import PostActivityXPScreen from './components/PostActivityXPScreen'
 import SyncOverlay from './components/SyncOverlay'
 import Toast from './components/Toast'
+
+type View = 'dashboard' | 'account'
 
 function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [user, setUser] = useState<UserResponse | null>(null)
+  const [view, setView] = useState<View>('dashboard')
   const [refreshKey, setRefreshKey] = useState(0)
   const [syncing, setSyncing] = useState(false)
+  const [postActivityQueue, setPostActivityQueue] = useState<ActivitySummaryResponse[]>([])
   const [celebrationEvents, setCelebrationEvents] = useState<LevelUpEvent[]>([])
   const [toast, setToast] = useState<string | null>(null)
+  const pendingCelebrationRef = useRef<LevelUpEvent[]>([])
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/health`)
@@ -38,6 +43,7 @@ function App() {
   const handleLogout = () => {
     setAccessToken(null)
     setUser(null)
+    setView('dashboard')
   }
 
   const handleSyncStart = () => {
@@ -49,14 +55,36 @@ function App() {
     if (!accessToken) return
     getCurrentUser(accessToken).then(setUser).catch(() => {})
     setRefreshKey((key) => key + 1)
-    if (job.level_up_events && job.level_up_events.length > 0) {
-      setCelebrationEvents(job.level_up_events)
+
+    const newActivities = job.new_activities ?? []
+    const levelUps = job.level_up_events ?? []
+
+    if (newActivities.length > 0) {
+      // Show the per-activity XP reveal first; any level-up celebration for
+      // this sync is held until that finishes so the two overlays never stack.
+      pendingCelebrationRef.current = levelUps
+      setPostActivityQueue(newActivities)
+    } else if (levelUps.length > 0) {
+      setCelebrationEvents(levelUps)
+    }
+  }
+
+  const handlePostActivityDone = () => {
+    setPostActivityQueue([])
+    if (pendingCelebrationRef.current.length > 0) {
+      setCelebrationEvents(pendingCelebrationRef.current)
+      pendingCelebrationRef.current = []
     }
   }
 
   const handleSyncFailed = () => {
     setSyncing(false)
     setToast('Could not reach Garmin — showing cached data')
+  }
+
+  const handleAccountReset = (updated: UserResponse) => {
+    setUser(updated)
+    setRefreshKey((key) => key + 1)
   }
 
   const xpPct = user ? Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100) : 0
@@ -74,55 +102,79 @@ function App() {
           <p className="tagline">Your real runs, gently reinterpreted. Every activity levels you up.</p>
 
           {user && accessToken && (
-            <div className="card plaque">
-              <div className="level-badge">
-                <span className="num">{user.main_level}</span>
-                <span className="lbl">Level</span>
+            <>
+              <div className="card plaque">
+                <div className="level-badge">
+                  <span className="num">{user.main_level}</span>
+                  <span className="lbl">Level</span>
+                </div>
+                <div className="plaque-body">
+                  <div className="name-line">
+                    {user.display_name} <span className="home">· {user.email}</span>
+                  </div>
+                  <div className="xp-row">
+                    <span>XP to next level</span>
+                    <span className="val">
+                      {Math.round(user.xp_into_level)} / {Math.round(user.xp_to_next_level_snapshot)}
+                    </span>
+                  </div>
+                  <div className="xp-track">
+                    <div className="xp-fill" style={{ width: `${xpPct}%` }} />
+                  </div>
+                  <p className="meta-line">
+                    {user.activities_this_level} activities this level · {Math.round(user.main_xp_total)} lifetime XP
+                  </p>
+                </div>
+                <button type="button" className="btn-ghost" onClick={handleLogout}>
+                  Log out
+                </button>
               </div>
-              <div className="plaque-body">
-                <div className="name-line">
-                  {user.display_name} <span className="home">· {user.email}</span>
-                </div>
-                <div className="xp-row">
-                  <span>XP to next level</span>
-                  <span className="val">
-                    {Math.round(user.xp_into_level)} / {Math.round(user.xp_to_next_level_snapshot)}
-                  </span>
-                </div>
-                <div className="xp-track">
-                  <div className="xp-fill" style={{ width: `${xpPct}%` }} />
-                </div>
-                <p className="meta-line">
-                  {user.activities_this_level} activities this level · {Math.round(user.main_xp_total)} lifetime XP
-                </p>
-              </div>
-              <button type="button" className="btn-ghost" onClick={handleLogout}>
-                Log out
-              </button>
-            </div>
+
+              <nav className="app-nav">
+                <button
+                  type="button"
+                  className={`app-nav-tab${view === 'dashboard' ? ' active' : ''}`}
+                  onClick={() => setView('dashboard')}
+                >
+                  Dashboard
+                </button>
+                <button
+                  type="button"
+                  className={`app-nav-tab${view === 'account' ? ' active' : ''}`}
+                  onClick={() => setView('account')}
+                >
+                  Account
+                </button>
+              </nav>
+            </>
           )}
         </header>
 
         {user && accessToken ? (
-          <div className="sections">
-            <HomeBasePanel accessToken={accessToken} />
-            <GoalsPanel accessToken={accessToken} />
-            <SkillsPanel accessToken={accessToken} refreshKey={refreshKey} />
-            <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
-            <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} />
-            <GarminPanel
-              accessToken={accessToken}
-              onSyncStart={handleSyncStart}
-              onSyncComplete={handleSyncComplete}
-              onSyncFailed={handleSyncFailed}
-            />
-          </div>
+          view === 'dashboard' ? (
+            <div className="sections">
+              <HomeBasePanel accessToken={accessToken} />
+              <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
+              <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} />
+              <GarminPanel
+                accessToken={accessToken}
+                onSyncStart={handleSyncStart}
+                onSyncComplete={handleSyncComplete}
+                onSyncFailed={handleSyncFailed}
+              />
+            </div>
+          ) : (
+            <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
+          )
         ) : (
           <LoginForm onSubmit={handleLogin} />
         )}
       </div>
 
       {syncing && <SyncOverlay />}
+      {postActivityQueue.length > 0 && (
+        <PostActivityXPScreen activities={postActivityQueue} onDone={handlePostActivityDone} />
+      )}
       {celebrationEvents.length > 0 && (
         <LevelUpCelebration events={celebrationEvents} onDone={() => setCelebrationEvents([])} />
       )}

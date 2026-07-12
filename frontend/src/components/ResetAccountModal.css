@@ -1,0 +1,90 @@
+.reset-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(55, 47, 39, 0.42);
+  backdrop-filter: blur(2px);
+  animation: reset-modal-fade 220ms ease both;
+}
+
+.reset-modal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+  width: 100%;
+  animation: reset-modal-pop 260ms cubic-bezier(0.2, 1.2, 0.3, 1) both;
+}
+
+.reset-modal-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.3rem;
+  color: var(--coral-deep);
+}
+
+.reset-modal-body {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.reset-modal-label {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.reset-modal-card input {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+  color: var(--ink);
+}
+
+.reset-modal-card input:focus {
+  outline: 2px solid var(--sky);
+  outline-offset: 1px;
+}
+
+.reset-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+@keyframes reset-modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes reset-modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reset-modal-overlay,
+  .reset-modal-card {
+    animation-duration: 0.01ms !important;
+  }
+}

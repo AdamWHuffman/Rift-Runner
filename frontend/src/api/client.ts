@@ -49,6 +49,7 @@ export interface SyncJobResponse {
   started_at: string | null
   finished_at: string | null
   level_up_events: LevelUpEvent[] | null
+  new_activities: ActivitySummaryResponse[] | null
 }
 
 export interface SkillProgressResponse {
@@ -248,4 +249,11 @@ export async function setActiveGoal(accessToken: string, goalKey: string): Promi
 
 export async function getActivities(accessToken: string): Promise<ActivitySummaryResponse[]> {
   return authedRequest<ActivitySummaryResponse[]>('/api/v1/activities', accessToken)
+}
+
+export async function resetAccount(accessToken: string, confirm: string): Promise<UserResponse> {
+  return authedRequest<UserResponse>('/api/v1/account/reset', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ confirm }),
+  })
 }

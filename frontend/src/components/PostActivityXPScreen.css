@@ -1,0 +1,216 @@
+.postxp-overlay {
+  position: fixed;
+  inset: 0;
+  /* Same isolation-context caveat as LevelUpCelebration.css -- keeps
+     Leaflet's internal panes from ever leaking above this overlay. */
+  z-index: 1000;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(55, 47, 39, 0.42);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 260ms ease;
+  cursor: pointer;
+}
+
+.postxp-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.postxp-card {
+  background: var(--paper);
+  border-radius: 32px 26px 36px 24px / 26px 34px 22px 30px;
+  box-shadow: 0 30px 60px -20px rgba(55, 47, 39, 0.5);
+  padding: 32px 30px 26px;
+  width: 100%;
+  max-width: 420px;
+  max-height: 88vh;
+  overflow-y: auto;
+  transform: translateY(18px) scale(0.97);
+  opacity: 0;
+  transition: transform 320ms cubic-bezier(0.2, 0.9, 0.2, 1), opacity 320ms ease;
+}
+
+.postxp-overlay.show .postxp-card {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.postxp-eyebrow {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--teal-deep);
+  margin-bottom: 4px;
+}
+
+.postxp-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--ink);
+  text-wrap: balance;
+}
+
+.postxp-date {
+  font-family: var(--font-voice);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+.postxp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.postxp-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 6px;
+  border-radius: 14px;
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  text-align: center;
+}
+
+.postxp-stat-v {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.postxp-stat-k {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.postxp-xp-block {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--line);
+}
+
+.postxp-total-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.postxp-total-label {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.postxp-total-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.3rem;
+  color: var(--gold-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.postxp-multiplier-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 10px;
+}
+
+.postxp-multiplier-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  padding: 5px 2px;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 320ms ease, transform 320ms ease;
+}
+
+.postxp-multiplier-row.revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.postxp-multiplier-row .k {
+  color: var(--ink-soft);
+}
+
+.postxp-multiplier-row .v {
+  font-weight: 700;
+  color: var(--coral-deep);
+  font-variant-numeric: tabular-nums;
+}
+
+.postxp-skill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.postxp-skill-chip {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: var(--teal-deep);
+  background: rgba(79, 173, 160, 0.14);
+  border-radius: 20px;
+  padding: 4px 11px;
+  text-transform: capitalize;
+}
+
+.postxp-levelup-hint {
+  margin-top: 16px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--coral);
+  text-align: center;
+}
+
+.postxp-no-xp {
+  margin-top: 18px;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+.postxp-hint {
+  margin-top: 22px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .postxp-overlay,
+  .postxp-card,
+  .postxp-multiplier-row {
+    transition-duration: 0.01ms !important;
+  }
+}

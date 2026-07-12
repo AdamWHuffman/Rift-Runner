@@ -76,6 +76,8 @@ async def test_run_sync_creates_activities(
     assert creds.status == "connected"
     assert creds.last_sync_success_at is not None
 
+    assert result.new_activity_ids == [str(activities[0].id)]
+
 
 async def test_run_sync_processes_xp_for_new_activities(
     db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
@@ -132,6 +134,7 @@ async def test_run_sync_is_idempotent_on_rerun(
     job2 = await _make_job(db_session, test_user)
     result2 = await sync_service.run_sync(db_session, job2.id, test_user.id)
     assert result2.activities_synced_count == 0
+    assert result2.new_activity_ids == []
 
     activities = (await db_session.scalars(select(Activity).where(Activity.user_id == test_user.id))).all()
     assert len(activities) == 1

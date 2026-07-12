@@ -10,11 +10,30 @@ from app.api.deps import get_arq_pool, get_current_user
 from app.db.session import get_db
 from app.models.sync_job import SyncJob
 from app.models.user import User
-from app.schemas.sync import SyncJobResponse
+from app.schemas.sync import LevelUpEventResponse, SyncJobResponse
+from app.services import activity_view
 
 router = APIRouter(prefix="/sync", tags=["sync"])
 
 DEBOUNCE_WINDOW = timedelta(minutes=2)
+
+
+async def _build_response(db: AsyncSession, job: SyncJob) -> SyncJobResponse:
+    new_activities = None
+    if job.new_activity_ids:
+        new_activities = await activity_view.list_activity_summaries(
+            db, user_id=job.user_id, activity_ids=[uuid.UUID(i) for i in job.new_activity_ids]
+        )
+    return SyncJobResponse(
+        id=job.id,
+        status=job.status,
+        activities_synced_count=job.activities_synced_count,
+        error_message=job.error_message,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        level_up_events=[LevelUpEventResponse(**e) for e in job.level_up_events] if job.level_up_events else None,
+        new_activities=new_activities,
+    )
 
 
 @router.post("/trigger", response_model=SyncJobResponse)
@@ -34,7 +53,7 @@ async def trigger_sync(
             and datetime.now(timezone.utc) - latest.finished_at < DEBOUNCE_WINDOW
         )
         if still_in_flight or recently_completed:
-            return SyncJobResponse.model_validate(latest)
+            return await _build_response(db, latest)
 
     job = SyncJob(user_id=current_user.id, status="queued")
     db.add(job)
@@ -42,7 +61,7 @@ async def trigger_sync(
     await db.refresh(job)
 
     await arq_pool.enqueue_job("run_garmin_sync", str(job.id), str(current_user.id))
-    return SyncJobResponse.model_validate(job)
+    return await _build_response(db, job)
 
 
 @router.get("/{job_id}", response_model=SyncJobResponse)
@@ -54,4 +73,4 @@ async def get_sync_job(
     job = await db.get(SyncJob, job_id)
     if job is None or job.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sync job not found")
-    return SyncJobResponse.model_validate(job)
+    return await _build_response(db, job)

@@ -3,6 +3,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.schemas.activity import ActivitySummaryResponse
+
 
 class LevelUpEventResponse(BaseModel):
     type: str
@@ -21,5 +23,6 @@ class SyncJobResponse(BaseModel):
     started_at: datetime | None = None
     finished_at: datetime | None = None
     level_up_events: list[LevelUpEventResponse] | None = None
+    new_activities: list[ActivitySummaryResponse] | None = None
 
     model_config = {"from_attributes": True}

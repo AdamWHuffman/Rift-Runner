@@ -216,16 +216,16 @@ Two pieces named together in the original plan, both genuinely small once invest
 
 ## Current State (as of last update)
 - Stack running via `docker compose up`: postgres, redis, backend (FastAPI + arq worker), frontend (Vite/React/TS) — all healthy.
-- Real Garmin account connected (with MFA), real activity synced and generating real XP/leveling/skill/course/region/weather data (main Level 2; all 5 skills tracking progress; 1 real course discovered in a real auto-named region, with a real course map).
-- 4 goals seeded; real account's active goal set to `base_building`, matching the user's actual stated fitness goal (low-injury-risk aerobic base building).
-- 338 backend tests passing.
-- Frontend has a real visual design system ("Whimsified Reality" — Fraunces/Karla, warm storybook palette) applied across every screen: level/XP hero plaque, home base, goal picker, skills grid, region-grouped courses with real clickable-to-expand OpenStreetMap route maps, an activity log with an expandable transparent XP breakdown (now including real weather/heat context), Garmin connect/sync (now automatic on page load, debounced, with a cached-data toast on failure), and a real animated level-up celebration (queued multi-event, canvas particles, no added dependencies) triggered off real sync results.
+- Real Garmin account reset to a genuine fresh state (Level 1, 0 XP, no activities/skills/course-progress) via the new reset endpoint, ready to repopulate from the next real Garmin sync; Garmin connection, home base, and active goal (`base_building`) were preserved through the reset.
+- 4 goals seeded; goal switching now requires an explicit confirm step (Account page).
+- 340 backend tests passing.
+- Frontend has a real visual design system ("Whimsified Reality" — Fraunces/Karla, warm storybook palette) applied across every screen: a two-view app (Dashboard + Account, lightweight state-based toggle, no router) — Dashboard has the level/XP hero plaque, home base, region-grouped courses with real clickable-to-expand OpenStreetMap route maps, an activity log with an expandable transparent XP breakdown, and Garmin connect/sync (automatic on page load, debounced, with a cached-data toast on failure); Account has the skills grid, deliberate-confirm goal picker, and a Danger Zone reset action. A new focused post-activity XP reveal (staged stats → multiplier cascade → final XP) plays after a sync finds new activities, chaining into the existing animated level-up celebration (queued multi-event, canvas particles, no added dependencies) when one occurs.
 
-## Local Network Hosting (in place of Phase 9, for now)
-Phase 9 (cloud-deploy) is deferred until v1.0 is signed off, possibly later.
-In the meantime the app is hosted locally on the home network for two real
-users (multi-user support already existed structurally — this was config
-only, no code changes):
+## Local Network Hosting
+Cloud-deploy is deferred until v1.0 is signed off, possibly later. In the
+meantime the app is hosted locally on the home network for two real users
+(multi-user support already existed structurally — this was config only, no
+code changes):
 - `.env`: `ALLOW_SIGNUP=true` (was `false`) so a second real account can
   register itself; `CORS_ORIGINS` now also includes the host machine's LAN
   origin (`http://<LAN-IP>:5173`) alongside `localhost:5173`.
@@ -245,13 +245,38 @@ only, no code changes):
   to recreate. Router/OS/Windows-Firewall-level network configuration was
   left to the user.
 
+### Phase 9 — Account Page + Deliberate Goal Switching ✅ complete & verified
+The dashboard was getting crowded, and the active goal (a real scoring lever, not cosmetic) could be swapped with a single accidental click. Both fixed together since the natural home for "make this harder to change" was a dedicated screen rather than more friction bolted onto the dashboard.
+
+**Account page.** No router library added — `App.tsx` just gained a `view: 'dashboard' | 'account'` state and a small pill-style `<nav>` toggle next to the level plaque. `SkillsPanel` and `GoalsPanel` moved off the dashboard into a new `AccountPage.tsx`; `HomeBasePanel`/`CoursesPanel`/`ActivityFeed`/`GarminPanel` stayed on the dashboard as before. Kept deliberately lightweight since this is a two-person local app, not a multi-page product — a full router would have been solving a problem that doesn't exist here.
+
+**Goal switching now requires confirmation.** `GoalsPanel`'s goal cards no longer switch on a single click. Clicking a non-active goal expands an inline confirm row on that card ("Switch to X? This changes how future activities score XP — past history stays exactly as earned.") with explicit Confirm/Cancel actions; only Confirm calls the existing `setActiveGoal` endpoint. No backend change needed — `goal_service.set_active_goal`'s history-tracking behavior (freezing what past `xp_transactions` meant) already made switching safe, it just needed to stop being a hair-trigger action.
+
+Verified via Playwright against a throwaway account: clicking a goal card reveals the confirm row without switching; Cancel dismisses it with no API call made; the Account page correctly shows Stats (skills) and Active Quest (goals) together. No console errors.
+
+### Phase 10 — Account Reset + Post-Activity XP Reveal ✅ complete & verified
+Two pieces, done in the order the user asked: a way to reset progress (so the app could be experienced fresh) built and used first, then the animated reveal screen it was needed to test.
+
+**Account reset.** Wasn't implemented yet — checked first per the user's request, then built `POST /api/v1/account/reset` (`app/services/account/reset_service.py` + `app/api/v1/routers/account.py`), gated behind typing the literal confirm string `"RESET"`. Wipes the calling user's `activities`, `xp_transactions`, `skill_progress`, and `course_user_progress`/`course_activity_links`, and resets the `users` row's leveling fields back to `leveling.initial_state()` — but deliberately leaves `courses`/`regions` alone (they're global/shared rows any user's activities can match, not user-owned) and leaves the Garmin connection, home base, and active goal untouched, since none of those are "progress" in the sense being reset. Frontend: a `ResetAccountModal` (typed-confirmation pattern, matching the "hard to do by accident" bar set for goal-switching) reachable from a new "Danger Zone" card on the Account page. Used for real: the real account was reset via the API immediately after building it (verified activities/xp_transactions/skill_progress/course_user_progress all hit zero while `garmin_credentials` and the global `courses`/`regions` rows stayed intact), so the next Garmin sync repopulates everything from a real Level 1.
+
+**Post-activity XP reveal.** A focused full-screen overlay (`PostActivityXPScreen`) that appears after a sync brings in new activities, staging the reveal the way a post-match stats screen does (structurally — not the dark tactical-HUD look, kept fully in the Whimsified Reality palette): activity stats fade in, "Base XP" ticks up from zero, then each multiplier (elevation, heat, course difficulty, PR, goal alignment) cascades in one at a time with the running total re-tweening after each, settling on "Final XP" plus skill-XP chips and a level-up hint if one occurred. Tap-to-skip mid-reveal, tap-to-advance at the end, queued across multiple new activities exactly like `LevelUpCelebration`'s event queue. Any level-up events from the same sync are deliberately held back and shown *after* the XP reveal finishes (`App.tsx` stashes them in a ref) so the two full-screen overlays never stack.
+
+Required a small backend addition to know which activities were new: `sync_jobs` gained a `new_activity_ids` column (migration `0009_sync_job_new_activities`), populated by `sync_service.run_sync` alongside the existing `level_up_events`. The activity-summary-building logic in the old `activities.py` router was extracted into a shared `app/services/activity_view.py` so `GET /api/v1/sync/{id}`'s response could embed the same `ActivitySummaryResponse` shape (now `SyncJobResponse.new_activities`) without duplicating the query/serialization logic.
+
+**Real bug found via testing, fixed:** `GarminPanel.handleSync()` only handled a freshly-triggered job by polling it to completion — if the debounced `/sync/trigger` endpoint instead handed back a job that was *already* complete or failed (which happens any time a sync completed within the last 2 minutes, including the routine case of reloading the page shortly after a previous sync), the polling effect's early-return-on-terminal-status meant `onSyncComplete`/`onSyncFailed` never fired at all — leaving `SyncOverlay` stuck on screen forever. Fixed by having `handleSync()` check the immediate response's status itself, mirroring what the polling effect already did. Found this the hard way: a synthetic-data verification repeatedly produced a stuck overlay until the true cause was traced to this gap rather than to the test setup.
+
+**Also found, not fixed (backlogged):** `sync_service.run_sync`'s token-decrypt step only catches `adapter.GarminAuthError`. If `decrypt()` itself raises (corrupted/undecryptable `encrypted_tokens`) the exception isn't caught, the job is left permanently stuck at `status="running"`, and the debounce logic's `still_in_flight` check means every future sync attempt for that user just returns the same wedged job forever. Not triggered by real data (only surfaced testing with intentionally-garbage fake tokens), but a real robustness gap — see Backlog.
+
+Verified end-to-end: seeded a synthetic completed sync job (realistic multipliers, a PR, a level-up) for a throwaway account and watched the real flow play out via Playwright — stats stage, multiplier cascade, final XP with skill chips and "Level 1 → 2!", chaining correctly into the real `LevelUpCelebration`, then a clean dashboard with the new activity showing `+1452 XP`. No console errors. Test data cleaned up afterward (including the account itself).
+
 ## What's Next
 - Nothing scheduled — v1.0 is being used/dogfooded locally by two real
-  users. See Backlog for candidate follow-up work, and Phase 9
-  (cloud-deploy prep) once v1.0 is signed off.
+  users. See Backlog for candidate follow-up work, and cloud-deploy prep
+  once v1.0 is signed off.
 
 ## Backlog (not currently scheduled)
 - **Phase 2.5 — Manual FIT/GPX import fallback.** Insurance against Garmin's unofficial API breaking again (upload a `.fit`/`.gpx` export as a second ingestion path, tagged `source=manual_upload`, into the same `activities` table). Not urgent while Garmin sync is working; revisit if it breaks or before a public launch.
 - **Themed biome/quest-zone system, reskinning the real course map.** Explored during Phase 7's design phase (Egyptian/Space/Pirate/Prehistoric/Jungle/Ice/Medieval/Western pockets, a Quest Log framing of the environmental-reskinning mechanic). Well-received as a concept but needs real backend design work first — it doesn't map onto the current one-region-per-real-place model. The user has confirmed the eventual approach: this can't be automated (no reliable way to auto-detect "this tunnel has spiders" from GPS data alone), so it will mean hand-designing themed regions for specific real places, starting with Arlington, VA. The real `CourseMap` (Leaflet + OSM, shipped in Phase 7) was deliberately built with this in mind — clean minimal basemap, vector markers, region-theme-aware coloring already — as the surface this would eventually skin.
 - **Onboarding wizard.** Sequence the existing connect-Garmin/home-base/goal-pick flow into a guided first-run tour instead of showing everything at once.
 - **Settings screen.** Garmin reconnect (already inline in `GarminPanel`) plus a units preference, which doesn't exist on the backend yet.
+- **`sync_service.run_sync` can wedge a job permanently at `status="running"`.** The token-decrypt step (`decrypt(creds.encrypted_tokens)`) is only guarded against `adapter.GarminAuthError`; any other exception (e.g. genuinely corrupted/undecryptable tokens) propagates unhandled, leaving the `SyncJob` row stuck at `"running"` forever and — because the debounce check in `sync.py` treats `"running"` as `still_in_flight` — silently blocking every future sync attempt for that user until someone fixes the row by hand. Found during Phase 10 testing with intentionally-garbage fake tokens, not from real data. Fix would be widening that `except` (or wrapping the whole decrypt/resume block) to route through `_fail()` like the existing `GarminAuthError`/`GarminSyncError` paths do.

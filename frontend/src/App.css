@@ -180,6 +180,40 @@
   border-color: var(--ink-soft);
 }
 
+/* ---------- nav ---------- */
+.app-nav {
+  display: inline-flex;
+  gap: 4px;
+  margin-top: 16px;
+  padding: 4px;
+  background: var(--paper-soft);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+}
+
+.app-nav-tab {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.app-nav-tab:hover {
+  color: var(--ink);
+}
+
+.app-nav-tab.active {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 4px 10px -4px rgba(55, 47, 39, 0.3);
+}
+
 /* ---------- sections ---------- */
 .section {
   margin-top: 34px;
@@ -292,10 +326,7 @@
   flex-direction: column;
   gap: 6px;
   text-align: left;
-  cursor: pointer;
   background: var(--paper);
-  color: inherit;
-  font-family: inherit;
   border: 1px solid var(--line);
   transition: transform 160ms ease, border-color 160ms ease;
 }
@@ -309,6 +340,24 @@
   box-shadow: 0 0 0 2px rgba(239, 127, 99, 0.25);
 }
 
+.goal-card-pending {
+  border-color: var(--sky-deep);
+}
+
+.goal-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  border: none;
+  padding: 0;
+  width: 100%;
+}
+
 .quest-name {
   display: inline-block;
   font-family: var(--font-display);
@@ -317,9 +366,78 @@
   color: var(--ink);
 }
 
+.quest-current {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--coral-deep);
+}
+
 .quest-desc {
   color: var(--ink-soft);
   font-size: 0.9rem;
+}
+
+.goal-confirm {
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.goal-confirm-text {
+  font-size: 0.85rem;
+  font-style: italic;
+  font-family: var(--font-voice);
+  color: var(--ink-soft);
+}
+
+.goal-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* ---------- danger zone ---------- */
+.danger-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  border-color: rgba(211, 95, 69, 0.35);
+}
+
+.danger-zone-text {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.btn-danger {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--coral-deep);
+  background: none;
+  border: 1.5px solid var(--coral);
+  border-radius: 24px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--coral);
+  color: #fff;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .home-base-card {

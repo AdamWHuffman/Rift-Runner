@@ -55,6 +55,7 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
 
     synced_count = 0
     level_up_events: list[dict] = []
+    new_activity_ids: list[str] = []
     for raw in raw_activities:
         fields = mapper.map_activity(raw)
         existing = await db.scalar(
@@ -71,6 +72,7 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
             activity.polyline = adapter.fetch_activity_polyline(client, fields["garmin_activity_id"])
         db.add(activity)
         synced_count += 1
+        new_activity_ids.append(str(activity.id))
 
         if activity.start_point:
             weather = open_meteo.fetch_weather_at(
@@ -112,6 +114,7 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
     job.status = "complete"
     job.activities_synced_count = synced_count
     job.level_up_events = level_up_events
+    job.new_activity_ids = new_activity_ids
     job.finished_at = datetime.now(timezone.utc)
     await db.commit()
     return job

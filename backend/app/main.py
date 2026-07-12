@@ -6,6 +6,7 @@ from arq.connections import RedisSettings
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.routers import account as account_router
 from app.api.v1.routers import activities as activities_router
 from app.api.v1.routers import auth as auth_router
 from app.api.v1.routers import courses as courses_router
@@ -36,6 +37,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(account_router.router, prefix="/api/v1")
 app.include_router(activities_router.router, prefix="/api/v1")
 app.include_router(auth_router.router, prefix="/api/v1")
 app.include_router(courses_router.router, prefix="/api/v1")
