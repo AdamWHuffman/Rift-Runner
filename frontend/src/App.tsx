@@ -8,6 +8,7 @@ import GarminPanel from './components/GarminPanel'
 import HomeBasePanel from './components/HomeBasePanel'
 import LevelUpCelebration from './components/LevelUpCelebration'
 import LoginForm from './components/LoginForm'
+import OnboardingWizard from './components/OnboardingWizard'
 import PostActivityXPScreen from './components/PostActivityXPScreen'
 import Toast from './components/Toast'
 
@@ -101,6 +102,7 @@ function App() {
   }
 
   const xpPct = user ? Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100) : 0
+  const needsOnboarding = user !== null && !user.onboarding_completed_at
 
   return (
     <main className="app-shell">
@@ -114,7 +116,7 @@ function App() {
           </h1>
           <p className="tagline">Your real runs, gently reinterpreted. Every activity levels you up.</p>
 
-          {user && accessToken && (
+          {user && accessToken && !needsOnboarding && (
             <>
               <div className="card plaque">
                 <div className="level-badge">
@@ -164,26 +166,30 @@ function App() {
         </header>
 
         {checkingSession ? null : user && accessToken ? (
-          <>
-            {/* Kept mounted (just hidden) across view switches -- GarminPanel
-                owns in-flight sync tracking (auto-sync-on-mount, polling), and
-                unmounting it mid-sync orphaned that state, leaving syncs stuck
-                forever. */}
-            <div className="sections dashboard-sections" style={view === 'dashboard' ? undefined : { display: 'none' }}>
-              <HomeBasePanel accessToken={accessToken} />
-              <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
-              <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} units={user.units} />
-              <GarminPanel
-                accessToken={accessToken}
-                syncNonce={syncNonce}
-                onSyncComplete={handleSyncComplete}
-                onSyncFailed={handleSyncFailed}
-              />
-            </div>
-            {view === 'account' && (
-              <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
-            )}
-          </>
+          needsOnboarding ? (
+            <OnboardingWizard accessToken={accessToken} onComplete={setUser} />
+          ) : (
+            <>
+              {/* Kept mounted (just hidden) across view switches -- GarminPanel
+                  owns in-flight sync tracking (auto-sync-on-mount, polling), and
+                  unmounting it mid-sync orphaned that state, leaving syncs stuck
+                  forever. */}
+              <div className="sections dashboard-sections" style={view === 'dashboard' ? undefined : { display: 'none' }}>
+                <HomeBasePanel accessToken={accessToken} />
+                <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
+                <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} units={user.units} />
+                <GarminPanel
+                  accessToken={accessToken}
+                  syncNonce={syncNonce}
+                  onSyncComplete={handleSyncComplete}
+                  onSyncFailed={handleSyncFailed}
+                />
+              </div>
+              {view === 'account' && (
+                <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
+              )}
+            </>
+          )
         ) : (
           <LoginForm onSubmit={handleLogin} />
         )}

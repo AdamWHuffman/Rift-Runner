@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -31,5 +32,6 @@ class UserResponse(BaseModel):
     xp_into_level: float
     xp_to_next_level_snapshot: float
     activities_this_level: int
+    onboarding_completed_at: datetime | None
 
     model_config = {"from_attributes": True}

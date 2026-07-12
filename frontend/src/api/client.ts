@@ -25,6 +25,7 @@ export interface UserResponse {
   xp_into_level: number
   xp_to_next_level_snapshot: number
   activities_this_level: number
+  onboarding_completed_at: string | null
 }
 
 export interface GarminStatusResponse {
@@ -185,6 +186,10 @@ export async function login(email: string, password: string): Promise<AccessToke
 
 export async function getCurrentUser(accessToken: string): Promise<UserResponse> {
   return authedRequest<UserResponse>('/api/v1/auth/me', accessToken)
+}
+
+export async function completeOnboarding(accessToken: string): Promise<UserResponse> {
+  return authedRequest<UserResponse>('/api/v1/auth/complete-onboarding', accessToken, { method: 'POST' })
 }
 
 export async function refreshAccessToken(): Promise<AccessTokenResponse> {

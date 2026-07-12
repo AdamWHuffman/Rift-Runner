@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
@@ -112,4 +113,16 @@ async def logout(response: Response) -> dict[str, str]:
 
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
+@router.post("/complete-onboarding", response_model=UserResponse)
+async def complete_onboarding(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    if current_user.onboarding_completed_at is None:
+        current_user.onboarding_completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(current_user)
     return current_user
