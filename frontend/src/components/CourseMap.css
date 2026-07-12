@@ -1,15 +1,57 @@
 .course-map {
+  display: block;
+  width: 100%;
   margin-top: 12px;
+  padding: 0;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--line);
   position: relative;
+  cursor: pointer;
+  background: none;
+  font-family: inherit;
 }
 
 .course-map-inner {
   height: 220px;
   width: 100%;
   background: var(--paper-soft);
+  /* Interaction is fully disabled via MapContainer props on the thumbnail --
+     this just guarantees clicks always reach the wrapping button rather than
+     being swallowed by Leaflet's internal DOM/event handling. */
+  pointer-events: none;
+}
+
+.course-map-expand-hint {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: var(--ink);
+  background: rgba(255, 250, 240, 0.92);
+  border: 1px solid var(--line);
+  padding: 5px 10px;
+  border-radius: 20px;
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.course-map:hover .course-map-expand-hint,
+.course-map:focus-visible .course-map-expand-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.course-map:focus-visible {
+  outline: 3px solid var(--sky);
+  outline-offset: 2px;
 }
 
 .course-map-attribution {
@@ -27,4 +69,93 @@
 
 .course-map-attribution a {
   color: var(--ink-soft);
+}
+
+/* ---------- expanded modal ---------- */
+.course-map-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  place-items: center;
+  background: rgba(55, 47, 39, 0.5);
+  backdrop-filter: blur(2px);
+  padding: 20px;
+  animation: course-map-fade-in 200ms ease both;
+}
+
+.course-map-modal {
+  position: relative;
+  width: min(900px, 100%);
+  background: var(--paper);
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px -20px rgba(55, 47, 39, 0.5);
+  animation: course-map-pop-in 260ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.course-map-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.course-map-modal-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.course-map-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper-soft);
+  color: var(--ink-soft);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.course-map-modal-close:hover {
+  color: var(--ink);
+  border-color: var(--ink-soft);
+}
+
+.course-map-modal-inner {
+  height: min(70vh, 640px);
+  width: 100%;
+}
+
+@keyframes course-map-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes course-map-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .course-map-modal-overlay,
+  .course-map-modal {
+    animation-duration: 0.01ms !important;
+  }
 }

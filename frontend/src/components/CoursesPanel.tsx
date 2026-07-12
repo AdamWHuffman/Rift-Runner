@@ -67,7 +67,7 @@ function CoursesPanel({ accessToken, refreshKey }: CoursesPanelProps) {
                     <div style={{ width: `${pct}%` }} />
                   </div>
                   <div className="course-map-slot">
-                    <CourseMap polyline={course.polyline} theme={course.region_theme} />
+                    <CourseMap polyline={course.polyline} theme={course.region_theme} courseName={course.name} />
                   </div>
                 </div>
               )
