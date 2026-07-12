@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
-import { API_BASE_URL, getCurrentUser, login, type ActivitySummaryResponse, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
+import { API_BASE_URL, getCurrentUser, login, logout, refreshAccessToken, type ActivitySummaryResponse, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
 import AccountPage from './components/AccountPage'
 import ActivityFeed from './components/ActivityFeed'
 import CoursesPanel from './components/CoursesPanel'
@@ -18,6 +18,7 @@ function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [user, setUser] = useState<UserResponse | null>(null)
+  const [checkingSession, setCheckingSession] = useState(true)
   const [view, setView] = useState<View>('dashboard')
   const [refreshKey, setRefreshKey] = useState(0)
   const [syncing, setSyncing] = useState(false)
@@ -33,6 +34,20 @@ function App() {
       .catch(() => setApiStatus('error'))
   }, [])
 
+  // Restore a session on page load/refresh from the httpOnly refresh_token
+  // cookie the backend already sets on login -- without this, every reload
+  // silently signs the user out even though the cookie is still valid.
+  useEffect(() => {
+    refreshAccessToken()
+      .then(async (tokens) => {
+        const me = await getCurrentUser(tokens.access_token)
+        setAccessToken(tokens.access_token)
+        setUser(me)
+      })
+      .catch(() => {})
+      .finally(() => setCheckingSession(false))
+  }, [])
+
   const handleLogin = async (email: string, password: string) => {
     const tokens = await login(email, password)
     const me = await getCurrentUser(tokens.access_token)
@@ -41,6 +56,7 @@ function App() {
   }
 
   const handleLogout = () => {
+    logout().catch(() => {})
     setAccessToken(null)
     setUser(null)
     setView('dashboard')
@@ -150,9 +166,13 @@ function App() {
           )}
         </header>
 
-        {user && accessToken ? (
-          view === 'dashboard' ? (
-            <div className="sections">
+        {checkingSession ? null : user && accessToken ? (
+          <>
+            {/* Kept mounted (just hidden) across view switches -- GarminPanel
+                owns in-flight sync tracking (auto-sync-on-mount, polling), and
+                unmounting it mid-sync orphaned that state, leaving the sync
+                overlay stuck forever. */}
+            <div className="sections dashboard-sections" style={view === 'dashboard' ? undefined : { display: 'none' }}>
               <HomeBasePanel accessToken={accessToken} />
               <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
               <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} />
@@ -163,9 +183,10 @@ function App() {
                 onSyncFailed={handleSyncFailed}
               />
             </div>
-          ) : (
-            <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
-          )
+            {view === 'account' && (
+              <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
+            )}
+          </>
         ) : (
           <LoginForm onSubmit={handleLogin} />
         )}

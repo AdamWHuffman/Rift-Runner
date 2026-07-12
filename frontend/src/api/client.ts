@@ -1,4 +1,12 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+// Defaults to whatever hostname the page itself was loaded from (just the
+// backend's port swapped in), so the API origin always matches the page's
+// origin -- whether that's localhost or a LAN IP. This matters beyond
+// convenience: the refresh-token cookie is same-site only when the page and
+// API share an origin, so hardcoding one fixed host here would silently
+// break session persistence for anyone accessing via the other one.
+// VITE_API_BASE_URL remains available as an explicit override if ever needed.
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:8000`
 
 export interface AccessTokenResponse {
   access_token: string
@@ -177,6 +185,22 @@ export async function login(email: string, password: string): Promise<AccessToke
 
 export async function getCurrentUser(accessToken: string): Promise<UserResponse> {
   return authedRequest<UserResponse>('/api/v1/auth/me', accessToken)
+}
+
+export async function refreshAccessToken(): Promise<AccessTokenResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  if (!res.ok) throw new ApiError(await parseErrorDetail(res), res.status)
+  return res.json()
+}
+
+export async function logout(): Promise<void> {
+  await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  })
 }
 
 export async function connectGarmin(
