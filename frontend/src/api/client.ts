@@ -257,6 +257,19 @@ export async function getSkills(accessToken: string): Promise<SkillProgressRespo
   return authedRequest<SkillProgressResponse[]>('/api/v1/skills', accessToken)
 }
 
+export interface AddressSuggestion {
+  display_name: string
+  lat: number
+  lon: number
+}
+
+export async function getAddressSuggestions(accessToken: string, query: string): Promise<AddressSuggestion[]> {
+  return authedRequest<AddressSuggestion[]>(
+    `/api/v1/regions/geocode-suggestions?q=${encodeURIComponent(query)}`,
+    accessToken,
+  )
+}
+
 export async function setHomeBase(accessToken: string, address: string): Promise<RegionResponse> {
   return authedRequest<RegionResponse>('/api/v1/regions/home-base', accessToken, {
     method: 'POST',

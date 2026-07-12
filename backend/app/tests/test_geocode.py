@@ -45,6 +45,38 @@ def test_geocode_address_returns_none_on_network_error(monkeypatch: pytest.Monke
     assert geocode.geocode_address("Arlington, VA") is None
 
 
+def test_search_addresses_returns_multiple_candidates(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        httpx,
+        "get",
+        lambda *a, **k: FakeResponse(
+            [
+                {"lat": "38.88", "lon": "-77.09", "display_name": "Arlington, VA, USA"},
+                {"lat": "32.73", "lon": "-97.11", "display_name": "Arlington, TX, USA"},
+            ]
+        ),
+    )
+
+    results = geocode.search_addresses("Arlington")
+
+    assert len(results) == 2
+    assert results[0].display_name == "Arlington, VA, USA"
+    assert results[1].display_name == "Arlington, TX, USA"
+
+
+def test_search_addresses_returns_empty_list_when_no_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(httpx, "get", lambda *a, **k: FakeResponse([]))
+    assert geocode.search_addresses("Nowhere Land XYZ") == []
+
+
+def test_search_addresses_returns_empty_list_on_network_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    def raise_error(*a, **k):
+        raise httpx.ConnectTimeout("timed out")
+
+    monkeypatch.setattr(httpx, "get", raise_error)
+    assert geocode.search_addresses("Arlington") == []
+
+
 def test_is_likely_united_states_true_for_arlington_va() -> None:
     assert geocode.is_likely_united_states(38.88, -77.09) is True
 

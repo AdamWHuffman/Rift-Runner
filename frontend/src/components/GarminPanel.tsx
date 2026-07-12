@@ -87,6 +87,12 @@ function GarminPanel({ accessToken, syncNonce, onSyncComplete, onSyncFailed }: G
     }
   }
 
+  const handleMfaCancel = () => {
+    setMfaSessionId(null)
+    setMfaCode('')
+    setError(null)
+  }
+
   // Runs silently -- no button, no full-screen overlay. A sync either finds
   // nothing (nothing to show) or finds something (the post-activity reveal /
   // level-up celebration already say so on their own), so there's nothing a
@@ -143,6 +149,7 @@ function GarminPanel({ accessToken, syncNonce, onSyncComplete, onSyncFailed }: G
       <section className="section">
         <div className="section-head">
           <span className="section-title">Enter Garmin MFA Code</span>
+          <span className="section-sub">most accounts don't need this — you're only seeing it because yours has it enabled</span>
         </div>
         <form onSubmit={handleMfaSubmit} className="card form-card">
           <label>
@@ -156,10 +163,15 @@ function GarminPanel({ accessToken, syncNonce, onSyncComplete, onSyncFailed }: G
               autoFocus
             />
           </label>
-          <button type="submit" className="btn" disabled={connecting}>
-            {connecting ? 'Verifying…' : 'Verify code'}
-          </button>
           {error && <p className="form-error">{error}</p>}
+          <div className="form-actions">
+            <button type="button" className="btn-ghost" onClick={handleMfaCancel} disabled={connecting}>
+              Cancel
+            </button>
+            <button type="submit" className="btn" disabled={connecting}>
+              {connecting ? 'Verifying…' : 'Verify code'}
+            </button>
+          </div>
         </form>
       </section>
     )

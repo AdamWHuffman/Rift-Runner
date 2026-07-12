@@ -281,6 +281,13 @@
   font-size: 0.85rem;
 }
 
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
 .login-card {
   max-width: 360px;
   margin: 60px auto 0;

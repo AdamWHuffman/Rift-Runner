@@ -10,6 +10,7 @@ import {
   type RegionResponse,
   type UserResponse,
 } from '../api/client'
+import AddressAutocomplete from './AddressAutocomplete'
 import './OnboardingWizard.css'
 
 interface OnboardingWizardProps {
@@ -37,8 +38,8 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
       <p className="onboarding-eyebrow">Welcome</p>
       <h2 className="onboarding-title">The Quest for Health</h2>
       <p className="onboarding-body">
-        Your real runs and walks, gently reinterpreted as an RPG. A few quick steps and you're set — every one is
-        optional and can be finished later from your dashboard.
+        Your real runs and walks, gently reinterpreted as an RPG. A few quick steps and you're set — connecting
+        Garmin is required, but the rest can be finished later from your dashboard.
       </p>
       <div className="onboarding-actions">
         <button type="button" className="btn" onClick={onNext}>
@@ -49,7 +50,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   )
 }
 
-function GarminStep({ accessToken, onNext, onSkip }: { accessToken: string; onNext: () => void; onSkip: () => void }) {
+function GarminStep({ accessToken, onNext }: { accessToken: string; onNext: () => void }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mfaSessionId, setMfaSessionId] = useState<string | null>(null)
@@ -90,11 +91,24 @@ function GarminStep({ accessToken, onNext, onSkip }: { accessToken: string; onNe
     }
   }
 
+  // "I don't have a code" backs out to the connect form to retry -- Garmin
+  // connection itself isn't skippable (the app doesn't do much without real
+  // activity data), so this can't skip past it the way the other steps can.
+  const handleMfaCancel = () => {
+    setMfaSessionId(null)
+    setMfaCode('')
+    setError(null)
+  }
+
   if (mfaSessionId) {
     return (
       <>
         <p className="onboarding-eyebrow">Step 1 of 3</p>
         <h2 className="onboarding-title">Enter Garmin MFA Code</h2>
+        <p className="onboarding-body">
+          Most Garmin accounts don't have this turned on — you're only seeing this because yours does. If you don't
+          have a code handy, go back and try again once you do.
+        </p>
         <form onSubmit={handleMfaSubmit} className="form-card">
           <label>
             MFA code
@@ -109,8 +123,8 @@ function GarminStep({ accessToken, onNext, onSkip }: { accessToken: string; onNe
           </label>
           {error && <p className="form-error">{error}</p>}
           <div className="onboarding-actions">
-            <button type="button" className="btn-ghost" onClick={onSkip}>
-              Skip for now
+            <button type="button" className="btn-ghost" onClick={handleMfaCancel}>
+              I don't have a code
             </button>
             <button type="submit" className="btn" disabled={submitting}>
               {submitting ? 'Verifying…' : 'Verify code'}
@@ -125,7 +139,10 @@ function GarminStep({ accessToken, onNext, onSkip }: { accessToken: string; onNe
     <>
       <p className="onboarding-eyebrow">Step 1 of 3</p>
       <h2 className="onboarding-title">Connect Garmin</h2>
-      <p className="onboarding-body">Sync your real activities so every run starts earning real XP.</p>
+      <p className="onboarding-body">
+        The Quest for Health runs on your real Garmin activity data — there's no getting started without connecting
+        it first.
+      </p>
       <form onSubmit={handleConnect} className="form-card">
         <label>
           Garmin email
@@ -137,9 +154,6 @@ function GarminStep({ accessToken, onNext, onSkip }: { accessToken: string; onNe
         </label>
         {error && <p className="form-error">{error}</p>}
         <div className="onboarding-actions">
-          <button type="button" className="btn-ghost" onClick={onSkip}>
-            Skip for now
-          </button>
           <button type="submit" className="btn" disabled={submitting}>
             {submitting ? 'Connecting…' : 'Connect Garmin'}
           </button>
@@ -192,7 +206,7 @@ function HomeBaseStep({ accessToken, onNext, onSkip }: { accessToken: string; on
       <form onSubmit={handleSubmit} className="form-card">
         <label>
           Home address
-          <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)} />
+          <AddressAutocomplete accessToken={accessToken} value={address} onChange={setAddress} disabled={submitting} />
         </label>
         {error && <p className="form-error">{error}</p>}
         <div className="onboarding-actions">
@@ -302,7 +316,7 @@ function OnboardingWizard({ accessToken, onComplete }: OnboardingWizardProps) {
       <div className="card onboarding-card">
         {step !== 'done' && <ProgressDots stepIndex={stepIndex} />}
         {step === 'welcome' && <WelcomeStep onNext={advance} />}
-        {step === 'garmin' && <GarminStep accessToken={accessToken} onNext={advance} onSkip={advance} />}
+        {step === 'garmin' && <GarminStep accessToken={accessToken} onNext={advance} />}
         {step === 'home-base' && <HomeBaseStep accessToken={accessToken} onNext={advance} onSkip={advance} />}
         {step === 'goal' && <GoalStep accessToken={accessToken} onNext={advance} onSkip={advance} />}
         {step === 'done' && <DoneStep onFinish={finish} finishing={finishing} />}

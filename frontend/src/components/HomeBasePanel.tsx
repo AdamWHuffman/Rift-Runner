@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getHomeBase, setHomeBase, type RegionResponse } from '../api/client'
+import AddressAutocomplete from './AddressAutocomplete'
 
 interface HomeBasePanelProps {
   accessToken: string
@@ -56,7 +57,7 @@ function HomeBasePanel({ accessToken }: HomeBasePanelProps) {
       <form onSubmit={handleSubmit} className="card form-card">
         <label>
           Home address
-          <input type="text" required value={address} onChange={(e) => setAddress(e.target.value)} />
+          <AddressAutocomplete accessToken={accessToken} value={address} onChange={setAddress} disabled={submitting} />
         </label>
         <button type="submit" className="btn" disabled={submitting}>
           {submitting ? 'Finding…' : 'Set Home Base'}

@@ -5,10 +5,21 @@ from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.region import Region
 from app.models.user import User
-from app.schemas.region import HomeBaseRequest, RegionResponse
+from app.schemas.region import AddressSuggestionResponse, HomeBaseRequest, RegionResponse
 from app.services.region_engine import geocode, region_service
 
 router = APIRouter(prefix="/regions", tags=["regions"])
+
+
+@router.get("/geocode-suggestions", response_model=list[AddressSuggestionResponse])
+async def geocode_suggestions(
+    q: str,
+    current_user: User = Depends(get_current_user),
+) -> list[AddressSuggestionResponse]:
+    if len(q.strip()) < 3:
+        return []
+    results = geocode.search_addresses(q)
+    return [AddressSuggestionResponse(display_name=r.display_name, lat=r.lat, lon=r.lon) for r in results]
 
 
 @router.post("/home-base", response_model=RegionResponse)

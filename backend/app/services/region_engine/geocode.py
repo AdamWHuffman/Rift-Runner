@@ -52,6 +52,33 @@ def geocode_address(address: str) -> GeocodeResult | None:
         return None
 
 
+def search_addresses(query: str, limit: int = 5) -> list[GeocodeResult]:
+    """Multiple candidate matches for a partial address, for an
+    autocomplete-style picker -- geocode_address() above is for the actual
+    "resolve this one address" case."""
+    try:
+        response = httpx.get(
+            NOMINATIM_URL,
+            params={"q": query, "format": "json", "limit": limit},
+            headers={"User-Agent": USER_AGENT},
+            timeout=GEOCODE_TIMEOUT_SECONDS,
+        )
+        response.raise_for_status()
+        results = response.json()
+    except Exception:
+        return []
+
+    parsed: list[GeocodeResult] = []
+    for item in results:
+        try:
+            parsed.append(
+                GeocodeResult(lat=float(item["lat"]), lon=float(item["lon"]), display_name=item.get("display_name", query))
+            )
+        except (KeyError, ValueError, TypeError):
+            continue
+    return parsed
+
+
 _OVERPASS_QUERY = """
 [out:json][timeout:5];
 (
