@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getActivities, type ActivitySummaryResponse } from '../api/client'
-import { MULTIPLIER_LABELS, celsiusToFahrenheit, formatDistance, formatDuration } from '../utils/format'
+import { MULTIPLIER_LABELS, celsiusToFahrenheit, formatDateTime, formatDistance, formatDuration } from '../utils/format'
 
 interface ActivityFeedProps {
   accessToken: string
@@ -42,7 +42,7 @@ function ActivityFeed({ accessToken, refreshKey }: ActivityFeedProps) {
                     {activity.is_personal_record && <span className="pr-badge">PR</span>}
                   </span>
                   <span className="activity-meta">
-                    {new Date(activity.start_time).toLocaleDateString()} · {formatDistance(activity.distance_meters)} ·{' '}
+                    {formatDateTime(activity.start_time)} · {formatDistance(activity.distance_meters)} ·{' '}
                     {formatDuration(activity.duration_seconds)}
                     {activity.avg_hr ? ` · avg HR ${activity.avg_hr}` : ''}
                     {activity.temperature_c != null ? ` · ${celsiusToFahrenheit(activity.temperature_c)}°F` : ''}

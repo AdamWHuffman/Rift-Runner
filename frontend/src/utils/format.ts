@@ -6,6 +6,15 @@ export const MULTIPLIER_LABELS: Record<string, string> = {
   goal_alignment: 'Goal alignment',
 }
 
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`
 }

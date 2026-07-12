@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ActivitySummaryResponse } from '../api/client'
-import { MULTIPLIER_LABELS, celsiusToFahrenheit, formatDistance, formatDuration } from '../utils/format'
+import { MULTIPLIER_LABELS, celsiusToFahrenheit, formatDateTime, formatDistance, formatDuration } from '../utils/format'
 import './PostActivityXPScreen.css'
 
 interface PostActivityXPScreenProps {
@@ -142,13 +142,7 @@ function PostActivityXPScreen({ activities, onDone }: PostActivityXPScreenProps)
           Activity Results{activities.length > 1 ? ` · ${activityIndex + 1}/${activities.length}` : ''}
         </p>
         <h2 className="postxp-title">{activityLabel(activity)}</h2>
-        <p className="postxp-date">
-          {new Date(activity.start_time).toLocaleDateString(undefined, {
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-          })}
-        </p>
+        <p className="postxp-date">{formatDateTime(activity.start_time)}</p>
 
         <div className="postxp-stats-grid">
           <div className="postxp-stat">
