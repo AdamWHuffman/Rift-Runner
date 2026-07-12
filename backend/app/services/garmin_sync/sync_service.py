@@ -17,6 +17,9 @@ from app.services.xp_engine import calculator, skills
 
 SYNC_OVERLAP = timedelta(hours=2)
 DEFAULT_LOOKBACK = timedelta(days=30)
+# Only used as a cold-start fallback (see below) -- deliberately much wider
+# than DEFAULT_LOOKBACK since its job is to find *something* to seed from.
+COLD_START_LOOKBACK = timedelta(days=365)
 
 
 async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> SyncJob:
@@ -47,6 +50,27 @@ async def run_sync(db: AsyncSession, job_id: uuid.UUID, user_id: uuid.UUID) -> S
     except adapter.GarminSyncError as exc:
         creds.status = "error"
         return await _fail(db, job, str(exc))
+
+    has_local_activities = (
+        await db.scalar(select(Activity.id).where(Activity.user_id == user_id).limit(1))
+    ) is not None
+
+    if not has_local_activities and not raw_activities:
+        # Cold start -- most commonly right after a progress reset, where
+        # creds.last_sync_success_at survives even though local activities
+        # were wiped, so the normal since-cutoff above finds nothing "new"
+        # even though Garmin has real history. Search much further back and
+        # seed with just the single most recent activity as the new
+        # baseline, rather than replaying a large amount of history at once.
+        try:
+            raw_activities = adapter.fetch_activities_since(
+                client, (datetime.now(timezone.utc) - COLD_START_LOOKBACK).date()
+            )
+        except adapter.GarminSyncError as exc:
+            creds.status = "error"
+            return await _fail(db, job, str(exc))
+        if raw_activities:
+            raw_activities = [max(raw_activities, key=lambda r: r.get("startTimeGMT") or "")]
 
     user = await db.get(User, user_id)
     assert user is not None, f"user {user_id} not found"

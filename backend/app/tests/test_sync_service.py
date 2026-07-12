@@ -140,6 +140,63 @@ async def test_run_sync_is_idempotent_on_rerun(
     assert len(activities) == 1
 
 
+async def test_run_sync_cold_start_uses_most_recent_activity_when_user_has_none(
+    db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _make_credentials(db_session, test_user)
+    job = await _make_job(db_session, test_user)
+
+    monkeypatch.setattr(sync_service, "decrypt", lambda blob: blob)
+    monkeypatch.setattr(adapter, "deserialize_tokens", lambda blob: {})
+    monkeypatch.setattr(adapter, "resume", lambda tokens: object())
+
+    older = {**SAMPLE_ACTIVITY, "activityId": 200, "startTimeGMT": "2026-05-01 09:00:00"}
+    newer = {**SAMPLE_ACTIVITY, "activityId": 201, "startTimeGMT": "2026-06-15 09:00:00"}
+
+    calls: list[object] = []
+
+    def fake_fetch(client: object, since: object) -> list[dict]:
+        calls.append(since)
+        if len(calls) == 1:
+            return []  # normal watermark-based window finds nothing new
+        return [older, newer]  # wide cold-start fallback finds candidates
+
+    monkeypatch.setattr(adapter, "fetch_activities_since", fake_fetch)
+
+    result = await sync_service.run_sync(db_session, job.id, test_user.id)
+
+    assert result.status == "complete"
+    assert result.activities_synced_count == 1
+    assert len(calls) == 2
+
+    activities = (await db_session.scalars(select(Activity).where(Activity.user_id == test_user.id))).all()
+    assert len(activities) == 1
+    assert activities[0].garmin_activity_id == "201"
+
+
+async def test_run_sync_no_cold_start_fallback_once_user_has_activities(
+    db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _make_credentials(db_session, test_user)
+    _patch_happy_path(monkeypatch, [SAMPLE_ACTIVITY])
+    job1 = await _make_job(db_session, test_user)
+    await sync_service.run_sync(db_session, job1.id, test_user.id)
+
+    calls: list[object] = []
+
+    def fake_fetch(client: object, since: object) -> list[dict]:
+        calls.append(since)
+        return []
+
+    monkeypatch.setattr(adapter, "fetch_activities_since", fake_fetch)
+
+    job2 = await _make_job(db_session, test_user)
+    result2 = await sync_service.run_sync(db_session, job2.id, test_user.id)
+
+    assert result2.activities_synced_count == 0
+    assert len(calls) == 1  # only the normal since-based call -- no fallback triggered
+
+
 async def test_run_sync_marks_needs_reauth_on_auth_error(
     db_session: AsyncSession, test_user: User, monkeypatch: pytest.MonkeyPatch
 ) -> None:
