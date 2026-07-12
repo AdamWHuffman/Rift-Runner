@@ -95,7 +95,7 @@ Two-tier: Tier 1 declarative rules (`rule_configs` table, not yet built) for sim
 0. Scaffolding — ✅ complete
 1. Auth & Users — ✅ complete
 2. Garmin ingestion — ✅ complete
-2.5. Manual import fallback — ⬜ not started
+2.5. Manual import fallback — 📋 backlogged (not urgent while Garmin sync works)
 3. Core XP & main leveling — ✅ complete
 4. Skills — ✅ complete (all 5, including Explorer)
 5. Courses & Regions — ✅ complete
@@ -202,8 +202,11 @@ The original plan named a "rogue RuneScape" visual direction, but that was alway
 - Frontend has a real visual design system ("Whimsified Reality" — Fraunces/Karla, warm storybook palette) applied across every screen: level/XP hero plaque, home base, goal picker, skills grid, region-grouped courses, an activity log with an expandable transparent XP breakdown, Garmin connect/sync, and a real animated level-up celebration (queued multi-event, canvas particles, no added dependencies) triggered off real sync results.
 
 ## What's Next
-- **Phase 2.5** — Manual FIT/GPX import fallback (insurance against Garmin breaking again) — still open, order relative to remaining phases not yet decided.
-- **Backlog** — Themed biome/quest-zone system explored during Phase 7's design phase (Egyptian/Space/Pirate/Prehistoric/Jungle/Ice/Medieval/Western pockets, a Quest Log framing) — well-received as a concept but needs real backend design work (it doesn't map onto the current one-region-per-real-place model) before it's buildable. Revisit once core functionality is further along.
-- **Backlog** — Onboarding wizard (sequence the existing connect-Garmin/home-base/goal-pick flow into a guided first-run tour) and a Settings screen (Garmin reconnect, units) — both named in the original Phase 7 scope but deferred to keep this phase focused on the core dashboard experience.
 - **Phase 8** — Auto-sync-on-load + weather (Open-Meteo heat index).
 - **Phase 9** — Cloud-deploy prep.
+
+## Backlog (not currently scheduled)
+- **Phase 2.5 — Manual FIT/GPX import fallback.** Insurance against Garmin's unofficial API breaking again (upload a `.fit`/`.gpx` export as a second ingestion path, tagged `source=manual_upload`, into the same `activities` table). Not urgent while Garmin sync is working; revisit if it breaks or before a public launch.
+- **Themed biome/quest-zone system.** Explored during Phase 7's design phase (Egyptian/Space/Pirate/Prehistoric/Jungle/Ice/Medieval/Western pockets, a Quest Log framing of the environmental-reskinning mechanic). Well-received as a concept but needs real backend design work first — it doesn't map onto the current one-region-per-real-place model.
+- **Onboarding wizard.** Sequence the existing connect-Garmin/home-base/goal-pick flow into a guided first-run tour instead of showing everything at once.
+- **Settings screen.** Garmin reconnect (already inline in `GarminPanel`) plus a units preference, which doesn't exist on the backend yet.
