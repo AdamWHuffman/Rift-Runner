@@ -72,13 +72,11 @@ base_xp = trimp * 10
 
 Explorer deferred to Phase 5 (needs course/region discovery to exist first).
 
-### Core Algorithm: Course Leveling — not yet built (Phase 5)
+### Core Algorithm: Course Leveling — ✅ built, see Progress Log
 
-Planned: geohash-bucketed route matching, personalized `difficulty_rating_at_discovery` (scaled by the user's own Endurance skill), separate ever-increasing mastery `level`, repeat-run XP decay floored at 30%.
+### Home Base & Region Naming — ✅ built, see Progress Log
 
-### Home Base & Region Naming — not yet built (Phase 5)
-
-Planned: onboarding explicitly prompts for a home address (not inferred from activity data) → geocode → theme from dominant geographic feature → deterministically-seeded fantasy name generator. Example names generated for Arlington, VA during planning: *The Ridgeway Spires*, *Potomac's Landing*, *Glasshaven Heights*, *The Fourmile Reaches*, *Ridgemont Crossing*.
+Real generated names confirmed for the Arlington/DC area so far: *The Millrace Reaches* (riverlands, near the Potomac/Four Mile Run). Planning-time illustrative examples for reference: *The Ridgeway Spires*, *Potomac's Landing*, *Glasshaven Heights*, *The Fourmile Reaches*, *Ridgemont Crossing*.
 
 ### Goals System — not yet built (Phase 6)
 
@@ -99,9 +97,9 @@ Two-tier: Tier 1 declarative rules (`rule_configs` table, not yet built) for sim
 2. Garmin ingestion — ✅ complete
 2.5. Manual import fallback — ⬜ not started
 3. Core XP & main leveling — ✅ complete
-4. Skills — ✅ complete (Speed/Endurance/Health/Consistency; Explorer deferred to Phase 5)
-5. Courses & Regions — ⬜ not started (next up)
-6. Goals — ⬜ not started
+4. Skills — ✅ complete (all 5, including Explorer)
+5. Courses & Regions — ✅ complete
+6. Goals — ⬜ not started (next up)
 7. Gamified frontend polish — ⬜ not started
 8. Auto-sync-on-load + weather — ⬜ not started (basic sync-trigger exists; the full "always sync on open" polish is pending)
 9. Cloud-deploy prep — ⬜ not started
@@ -150,6 +148,11 @@ Frontend: added a basic (intentionally unstyled — Phase 7 will make it pretty)
 
 266 backend tests total, all passing. Verified against the real docker compose stack: re-synced the connected account's real activity through the full pipeline — all 4 skills correctly earned the 150 XP baseline (no prior history yet), confirmed via direct DB inspection and the real `GET /api/v1/skills` endpoint. Frontend `SkillsPanel` (level + XP bar grid) confirmed rendering correctly via a real Playwright screenshot.
 
+### Phase 5 — Courses & Regions ✅ complete & verified
+`garmin_sync/adapter.py` gained `fetch_activity_polyline()` (a real, separate per-activity Garmin API call for full GPS points — confirmed shape: `geoPolylineDTO.polyline`, best-effort, never blocks sync). `region_engine/` (geocode.py: Nominatim address→coords + Overpass best-effort theme detection with a short timeout and graceful fallback; namegen.py: deterministic fantasy name generator — SHA-256-seeded rather than Python's `hash()`, which is per-process randomized and would have silently broken "same place → same name" across restarts; region_service.py: find-or-create within a 10km radius, shared by home-base setup and auto-created course regions). `course_engine/` (matching.py: geohash-bucketed candidates + polyline-resampling similarity check; difficulty.py: personalized `difficulty_rating_at_discovery`, verified against the plan's own worked example numbers exactly; course_service.py: orchestrates matching/region-creation/frozen-difficulty/mastery-leveling, reusing `xp_engine.leveling` again, with repeat-run decay floored at 0.3x). `course_difficulty_multiplier` (stubbed since Phase 3) and the Explorer skill (deferred since Phase 4) are both wired in for real now. New `POST/GET /regions/home-base` and `GET /courses` endpoints; frontend `HomeBasePanel` + `CoursesPanel`.
+
+315 backend tests total, all passing (46 new this phase). Verified against the real docker compose stack end-to-end: re-synced the connected account's real activity through the complete pipeline — auto-created a real region ("The Millrace Reaches", correctly classified riverlands near the Potomac/Four Mile Run), discovered a course named after the real Garmin activity ("Arlington County Walking"), computed a real personalized difficulty rating (39), awarded course mastery XP and Explorer skill XP on first discovery. Verified all new endpoints via real HTTP, including that submitting "Arlington, VA" as a home base through a live browser correctly reused the same auto-created region instead of creating a duplicate (the 10km-radius reuse logic working as designed). Screenshot-confirmed via Playwright.
+
 ### Infrastructure / tooling notes worth remembering
 - **Docker Desktop + WSL2 hot-reload gotcha**: Vite's dev server (and possibly uvicorn's `--reload`) doesn't reliably detect file edits made from the Windows side of the bind mount, even though the mount itself is live/correct. A `usePolling`/`WATCHFILES_FORCE_POLLING` fix was attempted but didn't fully resolve it for this project's Rolldown-based Vite. **Restart the frontend container after frontend edits** before verifying, rather than trusting hot-reload.
 - All shell commands in this project are run through WSL Ubuntu (`wsl -d Ubuntu -- bash ...`), per user preference for Linux tooling over native PowerShell. Nested-quote commands are unreliable through the PowerShell→wsl.exe→bash chain (Windows argv parsing mangles embedded double quotes) — writing throwaway `.sh` scripts to the scratchpad directory and executing them by path is the reliable pattern.
@@ -157,12 +160,12 @@ Frontend: added a basic (intentionally unstyled — Phase 7 will make it pretty)
 
 ## Current State (as of last update)
 - Stack running via `docker compose up`: postgres, redis, backend (FastAPI + arq worker), frontend (Vite/React/TS) — all healthy.
-- Real Garmin account connected (with MFA), real activity synced and generating real XP/leveling/skill data (currently main Level 2; all 4 skills at Level 1 with 150/400 XP).
-- 266 backend tests passing.
-- Frontend shows: login, level/XP bar, skills grid, Garmin connect/sync panel. No real visual design yet (expected — that's Phase 7).
+- Real Garmin account connected (with MFA), real activity synced and generating real XP/leveling/skill/course/region data (main Level 2; all 5 skills tracking progress; 1 real course discovered in a real auto-named region).
+- 315 backend tests passing.
+- Frontend shows: login, level/XP bar, home base panel, skills grid, courses list, Garmin connect/sync panel. No real visual design yet (expected — that's Phase 7).
 
 ## What's Next
-- **Phase 5** — Courses & Regions (route matching, personalized course difficulty/mastery, Home Base + region naming). Also unlocks the deferred Explorer skill.
-- **Phase 2.5** — Manual FIT/GPX import fallback (insurance against Garmin breaking again) — still open, order relative to Phase 5 not yet decided.
+- **Phase 6** — Goals (general_health / endurance_building / performance_racing, goal-alignment multiplier wired into the main XP formula where it's currently stubbed at 1.0).
+- **Phase 2.5** — Manual FIT/GPX import fallback (insurance against Garmin breaking again) — still open, order relative to remaining phases not yet decided.
 
-Then Phases 5 (Courses & Regions), 6 (Goals), 7 (gamified frontend polish), 8 (auto-sync-on-load + weather), 9 (cloud-deploy prep) per the original roadmap above.
+Then Phase 7 (gamified frontend polish), 8 (auto-sync-on-load + weather), 9 (cloud-deploy prep) per the original roadmap above.
