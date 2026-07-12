@@ -7,6 +7,14 @@
   overflow: hidden;
   border: 1px solid var(--line);
   position: relative;
+  /* Leaflet's internal panes use z-index up to ~700 (tile pane 200, overlay
+     400, marker 600...), but Leaflet's own .leaflet-container only sets
+     position:relative on itself with no z-index -- which does NOT establish
+     a new stacking context per the CSS spec. Without isolation, those
+     internal z-index values are compared directly against page-level
+     siblings, so this thumbnail's tiles (200) would otherwise render above
+     the expanded modal's overlay (110). `isolation: isolate` contains them. */
+  isolation: isolate;
   cursor: pointer;
   background: none;
   font-family: inherit;
@@ -75,7 +83,12 @@
 .course-map-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 110;
+  /* Comfortably above Leaflet's own internal max pane z-index (~700, see the
+     note on .course-map) as a second line of defense, in addition to
+     isolating each thumbnail's stacking context so its panes can't leak out
+     in the first place. */
+  z-index: 1000;
+  isolation: isolate;
   display: grid;
   place-items: center;
   background: rgba(55, 47, 39, 0.5);

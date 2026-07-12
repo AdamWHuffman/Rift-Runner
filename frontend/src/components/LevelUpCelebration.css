@@ -1,7 +1,11 @@
 .levelup-overlay {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  /* Comfortably above Leaflet's internal pane z-index range (~700) -- see
+     the isolation note in CourseMap.css for why this matters whenever a
+     course map thumbnail might be on screen underneath this overlay. */
+  z-index: 1000;
+  isolation: isolate;
   display: grid;
   place-items: center;
   background: rgba(55, 47, 39, 0.38);
