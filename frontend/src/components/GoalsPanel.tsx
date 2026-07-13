@@ -45,7 +45,7 @@ function GoalsPanel({ accessToken }: GoalsPanelProps) {
   return (
     <section className="section">
       <div className="section-head">
-        <span className="section-title">Active Quest</span>
+        <span className="section-title">Character Type</span>
         <span className="section-sub">your goal shapes how every activity scores XP — switch deliberately</span>
       </div>
       <div className="goals-list">

@@ -16,9 +16,10 @@ interface ActivitiesPageProps {
   units?: string
   refreshKey: number
   onUserUpdate: (user: UserResponse) => void
+  onReplay: (activity: ActivitySummaryResponse) => void
 }
 
-function ActivitiesPage({ accessToken, units, refreshKey, onUserUpdate }: ActivitiesPageProps) {
+function ActivitiesPage({ accessToken, units, refreshKey, onUserUpdate, onReplay }: ActivitiesPageProps) {
   const [activities, setActivities] = useState<ActivitySummaryResponse[] | null>(null)
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -103,8 +104,8 @@ function ActivitiesPage({ accessToken, units, refreshKey, onUserUpdate }: Activi
     <div className="sections">
       <section className="section">
         <div className="section-head">
-          <span className="section-title">Manage Activities</span>
-          <span className="section-sub">delete a mistake, or bring in something from before you connected</span>
+          <span className="section-title">Activity Log</span>
+          <span className="section-sub">every run, with the XP math shown in the open</span>
         </div>
 
         <div className="card activities-import-card">
@@ -170,53 +171,67 @@ function ActivitiesPage({ accessToken, units, refreshKey, onUserUpdate }: Activi
         {error && <p className="form-error">{error}</p>}
 
         {activities && activities.length > 0 ? (
-          <div className="activities-manage-list">
-            {activities.map((activity) => (
-              <div key={activity.id} className="card activities-manage-row">
-                <div className="activities-manage-main">
-                  <span className="activity-name">
-                    {activity.activity_name ?? activity.activity_type}
-                    {activity.is_personal_record && <span className="pr-badge">PR</span>}
-                  </span>
-                  <span className="activity-meta">
-                    {formatDateTime(activity.start_time)} · {formatDistance(activity.distance_meters, units)} ·{' '}
-                    {formatDuration(activity.duration_seconds)}
-                  </span>
-                  {activity.course_name && (
-                    <span className="activity-course">
-                      {activity.course_name}
-                      {activity.region_name ? ` · ${activity.region_name}` : ''}
+          <div className="activity-list">
+            {activities.map((activity) => {
+              return (
+                <div key={activity.id} className="activity-card card">
+                  <button
+                    type="button"
+                    className="activity-row"
+                    onClick={() => onReplay(activity)}
+                    aria-label={`Replay XP breakdown for ${activity.activity_name ?? activity.activity_type}`}
+                  >
+                    <div className="activity-main">
+                      <span className="activity-name">
+                        {activity.activity_name ?? activity.activity_type}
+                        {activity.is_personal_record && <span className="pr-badge">PR</span>}
+                      </span>
+                      <span className="activity-meta">
+                        {formatDateTime(activity.start_time)} · {formatDistance(activity.distance_meters, units)} ·{' '}
+                        {formatDuration(activity.duration_seconds)}
+                      </span>
+                      {activity.course_name && (
+                        <span className="activity-course">
+                          {activity.course_name}
+                          {activity.region_name ? ` · ${activity.region_name}` : ''}
+                        </span>
+                      )}
+                    </div>
+                    {activity.main_xp && <span className="activity-xp">+{Math.round(activity.main_xp.final_xp)} XP</span>}
+                    <span className="chevron replay-icon" aria-hidden="true">
+                      ↻
                     </span>
-                  )}
-                </div>
-                {activity.main_xp && <span className="activity-xp">+{Math.round(activity.main_xp.final_xp)} XP</span>}
-
-                {pendingDeleteId === activity.id ? (
-                  <div className="activities-manage-confirm">
-                    <button
-                      type="button"
-                      className="btn-ghost"
-                      onClick={() => setPendingDeleteId(null)}
-                      disabled={deletingId === activity.id}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-danger"
-                      onClick={() => handleDelete(activity.id)}
-                      disabled={deletingId === activity.id}
-                    >
-                      {deletingId === activity.id ? 'Deleting…' : 'Delete'}
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" className="btn-ghost" onClick={() => setPendingDeleteId(activity.id)}>
-                    Delete
                   </button>
-                )}
-              </div>
-            ))}
+
+                  <div className="activities-manage-actions">
+                    {pendingDeleteId === activity.id ? (
+                      <div className="activities-manage-confirm">
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          onClick={() => setPendingDeleteId(null)}
+                          disabled={deletingId === activity.id}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-danger"
+                          onClick={() => handleDelete(activity.id)}
+                          disabled={deletingId === activity.id}
+                        >
+                          {deletingId === activity.id ? 'Deleting…' : 'Delete'}
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" className="btn-ghost" onClick={() => setPendingDeleteId(activity.id)}>
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : (
           activities && <p className="import-empty">No activities yet.</p>

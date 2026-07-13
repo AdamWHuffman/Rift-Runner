@@ -1,11 +1,21 @@
 .app-shell {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .page {
   max-width: 720px;
   margin: 0 auto;
   padding: 44px 20px 100px;
+  width: 100%;
+}
+
+/* ---------- map page (full-bleed, breaks out of .page's narrow column) ---------- */
+.map-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
 }
 
 .sections {
@@ -23,11 +33,219 @@
   padding: 26px;
 }
 
-/* ---------- hero ---------- */
+/* ---------- topbar (logged in, onboarding complete) ---------- */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+
+.topbar-inner {
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.topbar-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.topbar-logo {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.topbar-logo .pop {
+  color: var(--coral);
+  font-style: italic;
+}
+
+.topbar-status {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--teal-deep);
+}
+
+.topbar .app-nav {
+  margin-top: 0;
+}
+
+/* ---------- user menu ---------- */
+.user-menu {
+  position: relative;
+  margin-left: auto;
+}
+
+.user-menu-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  padding: 5px 18px 5px 5px;
+  cursor: pointer;
+  box-shadow: 0 10px 20px -16px rgba(55, 47, 39, 0.4);
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.user-menu-trigger:hover {
+  border-color: var(--ink-soft);
+  box-shadow: 0 12px 22px -14px rgba(55, 47, 39, 0.45);
+  transform: translateY(-1px);
+}
+
+.user-menu-ring {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  padding: 3px;
+  display: grid;
+  place-items: center;
+  transition: background 1200ms cubic-bezier(0.2, 0.9, 0.2, 1);
+}
+
+.user-menu-badge {
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #ffe2ad, var(--gold) 70%);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ink);
+  box-shadow: 0 4px 10px -5px rgba(198, 132, 31, 0.55);
+}
+
+.user-menu-badge.lg {
+  width: 54px;
+  height: 54px;
+  font-size: 1.25rem;
+}
+
+.user-menu-name {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 280px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 22px 40px -18px rgba(55, 47, 39, 0.35);
+  padding: 18px;
+  z-index: 30;
+  /* No fill-mode: a lingering non-none `transform` from a "both"/"forwards"
+     fill-mode would make this element a new containing block for any
+     position:fixed descendant, trapping it here instead of the viewport --
+     see .section below for where that footgun actually bit. Dropping the
+     fill-mode is a no-op visually since nothing else sets opacity/transform
+     on this element, so it already rests at the animation's end state. */
+  animation: rise 180ms ease;
+}
+
+.user-menu-stats {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.user-menu-stats-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-menu-name-line {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+
+.user-menu-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 16px 0 8px;
+}
+
+.user-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--ink);
+  background: none;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.user-menu-item:hover {
+  background: var(--paper-soft);
+}
+
+.user-menu-item.danger {
+  color: var(--coral-deep);
+}
+
+/* ---------- account header ---------- */
+.account-header {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 22px 24px;
+}
+
+.account-header-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-header-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin-bottom: 8px;
+}
+
+.account-header-name .home {
+  font-style: italic;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+/* ---------- hero (pre-login / onboarding) ---------- */
 .hero {
   margin-bottom: 30px;
   text-align: left;
-  animation: rise 700ms ease both;
+  /* No fill-mode -- see .user-menu-dropdown above for why. */
+  animation: rise 700ms ease;
 }
 
 .eyebrow {
@@ -59,14 +277,6 @@
   font-size: 1rem;
   max-width: 62ch;
   margin: 0 0 22px;
-}
-
-.plaque {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 20px;
-  align-items: center;
-  padding: 20px 24px;
 }
 
 .level-badge {
@@ -102,18 +312,6 @@
   padding: 2px 9px;
   border-radius: 20px;
   white-space: nowrap;
-}
-
-.plaque-body .name-line {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 1.05rem;
-}
-
-.plaque-body .name-line .home {
-  font-style: italic;
-  color: var(--ink-soft);
-  font-size: 0.85rem;
 }
 
 .xp-row {
@@ -162,8 +360,6 @@
 }
 
 .btn-ghost {
-  justify-self: end;
-  align-self: start;
   font-family: var(--font-body);
   font-weight: 700;
   font-size: 0.78rem;
@@ -217,7 +413,15 @@
 /* ---------- sections ---------- */
 .section {
   margin-top: 34px;
-  animation: rise 700ms ease both;
+  /* No fill-mode -- a lingering "both"/"forwards" transform here was the
+     actual cause of a real bug: CourseMap's expand-to-modal is
+     position:fixed to center on the viewport, but a non-none transform on
+     any ancestor (this one wraps the whole course list) makes that ancestor
+     the new containing block instead, so the modal centered within the
+     *list's* full height rather than the screen -- appearing off-screen for
+     any course far from the list's vertical middle. See .user-menu-dropdown
+     above for why dropping the fill-mode is otherwise a visual no-op. */
+  animation: rise 700ms ease;
 }
 
 .section-head {
@@ -454,6 +658,11 @@
 
 .home-base-card {
   max-width: 420px;
+}
+
+.home-base-change {
+  display: block;
+  margin-top: 14px;
 }
 
 /* ---------- skills ---------- */
@@ -699,72 +908,14 @@
   text-align: center;
 }
 
-.activity-breakdown {
-  padding: 0 22px 20px;
-  border-top: 1px dashed var(--line);
-  margin-top: -1px;
-  padding-top: 14px;
+.replay-icon {
+  font-size: 1.05rem;
+  transition: transform 200ms ease, color 160ms ease;
 }
 
-.breakdown-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 6px 0;
-  font-size: 0.88rem;
-}
-
-.breakdown-row .k {
-  color: var(--ink-soft);
-}
-
-.breakdown-row .v {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.breakdown-row.hl {
-  border-top: 1px solid var(--coral);
-  margin-top: 4px;
-  padding-top: 10px;
-}
-
-.breakdown-row.hl .k {
-  font-family: var(--font-display);
-  font-weight: 700;
-  color: var(--coral-deep);
-}
-
-.breakdown-row.hl .v {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.1rem;
+.activity-row:hover .replay-icon {
   color: var(--coral);
-}
-
-.no-xp {
-  color: var(--ink-soft);
-  font-size: 0.85rem;
-  font-style: italic;
-}
-
-.skill-xp-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
-}
-
-.skill-xp-chip {
-  font-family: var(--font-body);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--ink-soft);
-  background: var(--paper-soft);
-  border: 1px solid var(--line);
-  padding: 3px 10px;
-  border-radius: 12px;
-  text-transform: capitalize;
+  transform: rotate(-50deg);
 }
 
 /* ---------- garmin ---------- */
@@ -788,13 +939,24 @@
 }
 
 @media (max-width: 640px) {
-  .plaque {
-    grid-template-columns: 1fr;
-    text-align: center;
-    justify-items: center;
+  .topbar-inner {
+    flex-wrap: wrap;
+    row-gap: 10px;
+    padding: 14px 20px;
   }
 
-  .btn-ghost {
-    justify-self: center;
+  .topbar-brand {
+    margin-right: auto;
+  }
+
+  .app-nav {
+    order: 3;
+    width: 100%;
+  }
+
+  .account-header {
+    flex-direction: column;
+    text-align: center;
+    align-items: center;
   }
 }

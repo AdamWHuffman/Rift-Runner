@@ -17,5 +17,7 @@ class RegionResponse(BaseModel):
     id: uuid.UUID
     name: str
     theme: str
+    centroid_lat: float
+    centroid_lon: float
 
     model_config = {"from_attributes": True}

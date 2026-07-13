@@ -74,6 +74,8 @@ export interface RegionResponse {
   id: string
   name: string
   theme: string
+  centroid_lat: number
+  centroid_lon: number
 }
 
 export interface LatLon {
@@ -135,6 +137,7 @@ export interface ActivitySummaryResponse {
   heat_index_c: number | null
   main_xp: XPBreakdown | null
   skill_xp: SkillXP[]
+  polyline: LatLon[]
 }
 
 class ApiError extends Error {

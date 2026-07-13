@@ -1,0 +1,26 @@
+.route-anim-wrap {
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  /* See CourseMap.css for why isolation is needed -- Leaflet's internal
+     panes (z-index up to ~700) otherwise compare directly against
+     page-level siblings like this overlay's own z-index. */
+  isolation: isolate;
+}
+
+.route-anim-inner {
+  height: 420px;
+  width: 100%;
+  background: var(--paper-soft);
+  /* Interaction is fully disabled via MapContainer props -- this just
+     guarantees a tap always reaches the postxp-overlay's own onClick
+     (tap-to-skip) rather than being swallowed by Leaflet's internal
+     DOM/event handling. */
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .route-anim-inner {
+    height: 260px;
+  }
+}

@@ -23,7 +23,7 @@ async def create_user(email: str, password: str, display_name: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Bootstrap the initial Quest for Health account.")
+    parser = argparse.ArgumentParser(description="Bootstrap the initial Health Quest account.")
     parser.add_argument("--email", required=True)
     parser.add_argument("--display-name", required=True)
     parser.add_argument(

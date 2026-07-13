@@ -1,7 +1,10 @@
 .onboarding-overlay {
   display: flex;
   justify-content: center;
-  animation: onboarding-rise 500ms ease both;
+  /* No fill-mode -- see App.css's .section for why a lingering "both"
+     transform on a wrapping element is a real footgun for any
+     position:fixed descendant. Visual no-op here, same reasoning. */
+  animation: onboarding-rise 500ms ease;
 }
 
 .onboarding-card {
@@ -12,10 +15,31 @@
   text-align: left;
 }
 
+.onboarding-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 22px;
+}
+
 .onboarding-progress {
   display: flex;
   gap: 6px;
-  margin-bottom: 22px;
+}
+
+.onboarding-logout {
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.onboarding-logout:hover {
+  color: var(--ink);
+  text-decoration: underline;
 }
 
 .onboarding-dot {

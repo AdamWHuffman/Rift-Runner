@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await app.state.arq_pool.close()
 
 
-app = FastAPI(title="The Quest for Health API", lifespan=lifespan)
+app = FastAPI(title="Health Quest API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

@@ -1,29 +1,16 @@
 import type { LatLngBoundsExpression, LatLngExpression } from 'leaflet'
-import { useEffect, useLayoutEffect, useState } from 'react'
-import { CircleMarker, MapContainer, Polyline, TileLayer, useMap } from 'react-leaflet'
+import { useEffect, useState } from 'react'
+import { CircleMarker, MapContainer, Polyline, TileLayer } from 'react-leaflet'
 import type { LatLon } from '../api/client'
+import { DEFAULT_COLORS, THEME_COLORS, TILE_URL } from '../utils/mapTheme'
 import './CourseMap.css'
+import FitBoundsOnMount from './FitBoundsOnMount'
 
 interface CourseMapProps {
   polyline: LatLon[]
   theme: string
   courseName: string
 }
-
-// Route/marker colors keyed by the region's real theme (region_engine/geocode.py
-// THEME_* constants). This is a deliberate first step toward a bigger future
-// goal -- reskinning this same map with fully themed biomes -- so the palette
-// intentionally reuses the app's existing design tokens rather than inventing
-// a separate one-off color set.
-const THEME_COLORS: Record<string, { line: string; start: string; end: string }> = {
-  riverlands: { line: '#4a91a8', start: '#6fb3c9', end: '#4a91a8' },
-  highlands: { line: '#7d4f8a', start: '#9b6fa8', end: '#7d4f8a' },
-  greenwood: { line: '#416b40', start: '#5b8a5a', end: '#416b40' },
-  metropolis: { line: '#d35f45', start: '#ef7f63', end: '#d35f45' },
-}
-const DEFAULT_COLORS = THEME_COLORS.greenwood
-
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
 
 function RouteLayer({ points, colors }: { points: LatLngExpression[]; colors: { line: string; start: string; end: string } }) {
   return (
@@ -38,30 +25,6 @@ function RouteLayer({ points, colors }: { points: LatLngExpression[]; colors: { 
       />
     </>
   )
-}
-
-// react-leaflet's declarative `bounds` prop applies fitBounds() in an effect
-// that runs *after* the map's first paint at whatever placeholder view it
-// started with -- the tile pane's CSS transform gets updated for the new
-// view, but tiles already requested/rendered for the placeholder view can be
-// left behind at their stale transform offset, producing a torn-looking
-// background (the SVG route overlay is unaffected since it's positioned
-// fresh from lat/lon on every render, which is why only the tiles looked
-// wrong). Calling fitBounds ourselves in useLayoutEffect -- synchronously,
-// before the browser paints anything -- means there's never a placeholder
-// view to leave tiles behind from in the first place.
-function FitBoundsOnMount({ bounds, padding }: { bounds: LatLngBoundsExpression; padding: [number, number] }) {
-  const map = useMap()
-  useLayoutEffect(() => {
-    map.fitBounds(bounds, { padding, animate: false });
-    // A follow-up invalidateSize covers the (rarer) case where the
-    // container's own size wasn't final yet at layout-effect time, e.g. a
-    // parent still mid CSS-transition.
-    const timer = setTimeout(() => map.invalidateSize(), 250)
-    return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map])
-  return null
 }
 
 function CourseMap({ polyline, theme, courseName }: CourseMapProps) {

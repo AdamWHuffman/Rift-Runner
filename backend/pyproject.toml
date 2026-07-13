@@ -1,7 +1,7 @@
 [project]
 name = "quest-for-health-backend"
 version = "0.1.0"
-description = "The Quest for Health API"
+description = "Health Quest API"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

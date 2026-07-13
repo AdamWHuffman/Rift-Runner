@@ -40,3 +40,7 @@ export function formatDuration(seconds: number): string {
 export function celsiusToFahrenheit(celsius: number): number {
   return Math.round((celsius * 9) / 5 + 32)
 }
+
+export function xpProgressPct(user: { xp_into_level: number; xp_to_next_level_snapshot: number }): number {
+  return Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100)
+}

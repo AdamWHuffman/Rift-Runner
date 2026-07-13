@@ -11,7 +11,7 @@ from app.models.activity import Activity
 from app.models.course import Course
 from app.models.region import Region
 from app.models.xp_transaction import XPTransaction
-from app.schemas.activity import ActivitySummaryResponse, SkillXPResponse, XPBreakdownResponse
+from app.schemas.activity import ActivitySummaryResponse, LatLon, SkillXPResponse, XPBreakdownResponse
 
 
 async def list_activity_summaries(
@@ -74,6 +74,7 @@ async def list_activity_summaries(
                 if main_txn
                 else None,
                 skill_xp=skill_xp,
+                polyline=[LatLon(lat=p["lat"], lon=p["lon"]) for p in (activity.polyline or [])],
             )
         )
     return results

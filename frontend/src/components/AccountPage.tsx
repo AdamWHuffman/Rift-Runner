@@ -1,20 +1,51 @@
 import { useState } from 'react'
 import type { UserResponse } from '../api/client'
+import { xpProgressPct } from '../utils/format'
 import GoalsPanel from './GoalsPanel'
+import HomeBasePanel from './HomeBasePanel'
 import ResetAccountModal from './ResetAccountModal'
 import SkillsPanel from './SkillsPanel'
 
 interface AccountPageProps {
+  user: UserResponse
   accessToken: string
   refreshKey: number
   onAccountReset: (user: UserResponse) => void
 }
 
-function AccountPage({ accessToken, refreshKey, onAccountReset }: AccountPageProps) {
+function AccountPage({ user, accessToken, refreshKey, onAccountReset }: AccountPageProps) {
   const [resetModalOpen, setResetModalOpen] = useState(false)
+  const xpPct = xpProgressPct(user)
 
   return (
     <div className="sections">
+      <section className="section">
+        <div className="card account-header">
+          <div className="level-badge">
+            <span className="num">{user.main_level}</span>
+            <span className="lbl">Level</span>
+          </div>
+          <div className="account-header-body">
+            <div className="account-header-name">
+              {user.display_name} <span className="home">· {user.email}</span>
+            </div>
+            <div className="xp-row">
+              <span>XP to next level</span>
+              <span className="val">
+                {Math.round(user.xp_into_level)} / {Math.round(user.xp_to_next_level_snapshot)}
+              </span>
+            </div>
+            <div className="xp-track">
+              <div className="xp-fill" style={{ width: `${xpPct}%` }} />
+            </div>
+            <p className="meta-line">
+              {user.activities_this_level} activities this level · {Math.round(user.main_xp_total)} lifetime XP
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <HomeBasePanel accessToken={accessToken} />
       <SkillsPanel accessToken={accessToken} refreshKey={refreshKey} />
       <GoalsPanel accessToken={accessToken} />
 

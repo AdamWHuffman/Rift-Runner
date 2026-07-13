@@ -3,24 +3,31 @@ import './App.css'
 import { API_BASE_URL, getCurrentUser, login, logout, refreshAccessToken, register, type ActivitySummaryResponse, type LevelUpEvent, type SyncJobResponse, type UserResponse } from './api/client'
 import AccountPage from './components/AccountPage'
 import ActivitiesPage from './components/ActivitiesPage'
-import ActivityFeed from './components/ActivityFeed'
 import CoursesPanel from './components/CoursesPanel'
 import GarminPanel from './components/GarminPanel'
-import HomeBasePanel from './components/HomeBasePanel'
 import LevelUpCelebration from './components/LevelUpCelebration'
 import LoginForm from './components/LoginForm'
 import OnboardingWizard from './components/OnboardingWizard'
 import PostActivityXPScreen from './components/PostActivityXPScreen'
 import Toast from './components/Toast'
+import UserMenu from './components/UserMenu'
+import WorldMap from './components/WorldMap'
 
-type View = 'dashboard' | 'account' | 'activities'
+type View = 'courses' | 'activities' | 'map' | 'account'
+
+const VIEWS: View[] = ['courses', 'activities', 'map', 'account']
+
+function viewFromHash(): View {
+  const hash = window.location.hash.slice(1)
+  return (VIEWS as string[]).includes(hash) ? (hash as View) : 'activities'
+}
 
 function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'ok' | 'error'>('checking')
   const [accessToken, setAccessToken] = useState<string | null>(null)
   const [user, setUser] = useState<UserResponse | null>(null)
   const [checkingSession, setCheckingSession] = useState(true)
-  const [view, setView] = useState<View>('dashboard')
+  const [view, setViewState] = useState<View>(viewFromHash)
   const [refreshKey, setRefreshKey] = useState(0)
   const [syncNonce, setSyncNonce] = useState(0)
   const [postActivityQueue, setPostActivityQueue] = useState<ActivitySummaryResponse[]>([])
@@ -34,6 +41,20 @@ function App() {
       .then(() => setApiStatus('ok'))
       .catch(() => setApiStatus('error'))
   }, [])
+
+  // Keeps the active tab in the URL hash so a refresh (or the browser's
+  // back/forward) lands back on the same tab instead of always resetting to
+  // the default view.
+  useEffect(() => {
+    const handleHashChange = () => setViewState(viewFromHash())
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
+
+  const setView = (next: View) => {
+    setViewState(next)
+    if (window.location.hash.slice(1) !== next) window.location.hash = next
+  }
 
   // Restore a session on page load/refresh from the httpOnly refresh_token
   // cookie the backend already sets on login -- without this, every reload
@@ -67,7 +88,7 @@ function App() {
     logout().catch(() => {})
     setAccessToken(null)
     setUser(null)
-    setView('dashboard')
+    setView('activities')
   }
 
   const handleSyncComplete = (job: SyncJobResponse) => {
@@ -114,90 +135,87 @@ function App() {
     setRefreshKey((key) => key + 1)
   }
 
-  const xpPct = user ? Math.min(100, (user.xp_into_level / user.xp_to_next_level_snapshot) * 100) : 0
+  // Re-shows the XP reveal for an already-synced activity, purely for
+  // review -- no celebration chaining afterward, since nothing new actually
+  // happened (that already played out the first time this activity synced).
+  const handleReplayActivity = (activity: ActivitySummaryResponse) => {
+    pendingCelebrationRef.current = []
+    setPostActivityQueue([activity])
+  }
+
   const needsOnboarding = user !== null && !user.onboarding_completed_at
+  const showTopbar = user !== null && accessToken !== null && !needsOnboarding
 
   return (
     <main className="app-shell">
-      <div className="page">
-        <header className="hero">
-          <p className="eyebrow">
-            API status: <strong>{apiStatus === 'checking' ? 'checking…' : apiStatus === 'ok' ? 'connected' : 'unreachable'}</strong>
-          </p>
-          <h1 className="wordmark">
-            The Quest for <span className="pop">Health</span>
-          </h1>
-          <p className="tagline">Your real runs, gently reinterpreted. Every activity levels you up.</p>
-
-          {user && accessToken && !needsOnboarding && (
-            <>
-              <div className="card plaque">
-                <div className="level-badge">
-                  <span className="num">{user.main_level}</span>
-                  <span className="lbl">Level</span>
-                </div>
-                <div className="plaque-body">
-                  <div className="name-line">
-                    {user.display_name} <span className="home">· {user.email}</span>
-                  </div>
-                  <div className="xp-row">
-                    <span>XP to next level</span>
-                    <span className="val">
-                      {Math.round(user.xp_into_level)} / {Math.round(user.xp_to_next_level_snapshot)}
-                    </span>
-                  </div>
-                  <div className="xp-track">
-                    <div className="xp-fill" style={{ width: `${xpPct}%` }} />
-                  </div>
-                  <p className="meta-line">
-                    {user.activities_this_level} activities this level · {Math.round(user.main_xp_total)} lifetime XP
-                  </p>
-                </div>
-                <button type="button" className="btn-ghost" onClick={handleLogout}>
-                  Log out
-                </button>
-              </div>
-
-              <nav className="app-nav">
-                <button
-                  type="button"
-                  className={`app-nav-tab${view === 'dashboard' ? ' active' : ''}`}
-                  onClick={() => setView('dashboard')}
-                >
-                  Dashboard
-                </button>
-                <button
-                  type="button"
-                  className={`app-nav-tab${view === 'account' ? ' active' : ''}`}
-                  onClick={() => setView('account')}
-                >
-                  Account
-                </button>
-                <button
-                  type="button"
-                  className={`app-nav-tab${view === 'activities' ? ' active' : ''}`}
-                  onClick={() => setView('activities')}
-                >
-                  Activities
-                </button>
-              </nav>
-            </>
-          )}
+      {showTopbar && (
+        <header className="topbar">
+          <div className="topbar-inner">
+            <div className="topbar-brand">
+              <span className="topbar-logo">
+                Health <span className="pop">Quest</span>
+              </span>
+              <span className="topbar-status">
+                API {apiStatus === 'checking' ? 'checking…' : apiStatus === 'ok' ? 'connected' : 'unreachable'}
+              </span>
+            </div>
+            <nav className="app-nav">
+              <button
+                type="button"
+                className={`app-nav-tab${view === 'courses' ? ' active' : ''}`}
+                onClick={() => setView('courses')}
+              >
+                Courses
+              </button>
+              <button
+                type="button"
+                className={`app-nav-tab${view === 'activities' ? ' active' : ''}`}
+                onClick={() => setView('activities')}
+              >
+                Activities
+              </button>
+              <button
+                type="button"
+                className={`app-nav-tab${view === 'map' ? ' active' : ''}`}
+                onClick={() => setView('map')}
+              >
+                Map
+              </button>
+            </nav>
+            <UserMenu user={user} onViewAccount={() => setView('account')} onLogout={handleLogout} />
+          </div>
         </header>
+      )}
+
+      {/* Hidden (not unmounted) rather than skipped outright when the Map tab
+          is active -- GarminPanel lives inside this tree and must stay
+          mounted across every view switch, map included, see the comment
+          below. Actually hiding the whole narrow column also keeps the
+          full-bleed map from getting an empty padded gap above it. */}
+      <div className="page" style={showTopbar && view === 'map' ? { display: 'none' } : undefined}>
+        {!showTopbar && (
+          <header className="hero">
+            <p className="eyebrow">
+              API status: <strong>{apiStatus === 'checking' ? 'checking…' : apiStatus === 'ok' ? 'connected' : 'unreachable'}</strong>
+            </p>
+            <h1 className="wordmark">
+              Health <span className="pop">Quest</span>
+            </h1>
+            <p className="tagline">Your real runs, gently reinterpreted. Every activity levels you up.</p>
+          </header>
+        )}
 
         {checkingSession ? null : user && accessToken ? (
           needsOnboarding ? (
-            <OnboardingWizard accessToken={accessToken} onComplete={setUser} />
+            <OnboardingWizard accessToken={accessToken} onComplete={setUser} onLogout={handleLogout} />
           ) : (
             <>
               {/* Kept mounted (just hidden) across view switches -- GarminPanel
                   owns in-flight sync tracking (auto-sync-on-mount, polling), and
                   unmounting it mid-sync orphaned that state, leaving syncs stuck
-                  forever. */}
-              <div className="sections dashboard-sections" style={view === 'dashboard' ? undefined : { display: 'none' }}>
-                <HomeBasePanel accessToken={accessToken} />
-                <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />
-                <ActivityFeed accessToken={accessToken} refreshKey={refreshKey} units={user.units} />
+                  forever. Its Connect Garmin / reconnect UI conceptually lives on
+                  the Account page, so it's tied to that view's visibility. */}
+              <div className="sections" style={view === 'account' ? undefined : { display: 'none' }}>
                 <GarminPanel
                   accessToken={accessToken}
                   syncNonce={syncNonce}
@@ -206,14 +224,21 @@ function App() {
                 />
               </div>
               {view === 'account' && (
-                <AccountPage accessToken={accessToken} refreshKey={refreshKey} onAccountReset={handleAccountReset} />
+                <AccountPage
+                  user={user}
+                  accessToken={accessToken}
+                  refreshKey={refreshKey}
+                  onAccountReset={handleAccountReset}
+                />
               )}
+              {view === 'courses' && <CoursesPanel accessToken={accessToken} refreshKey={refreshKey} />}
               {view === 'activities' && (
                 <ActivitiesPage
                   accessToken={accessToken}
                   units={user.units}
                   refreshKey={refreshKey}
                   onUserUpdate={handleActivitiesChanged}
+                  onReplay={handleReplayActivity}
                 />
               )}
             </>
@@ -222,6 +247,12 @@ function App() {
           <LoginForm onSubmit={handleLogin} onRegister={handleRegister} />
         )}
       </div>
+
+      {showTopbar && view === 'map' && accessToken && (
+        <div className="map-page">
+          <WorldMap accessToken={accessToken} refreshKey={refreshKey} onNavigateToAccount={() => setView('account')} />
+        </div>
+      )}
 
       {postActivityQueue.length > 0 && (
         <PostActivityXPScreen activities={postActivityQueue} onDone={handlePostActivityDone} units={user?.units} />

@@ -16,6 +16,7 @@ import './OnboardingWizard.css'
 interface OnboardingWizardProps {
   accessToken: string
   onComplete: (user: UserResponse) => void
+  onLogout: () => void
 }
 
 type Step = 'welcome' | 'garmin' | 'home-base' | 'goal' | 'done'
@@ -36,7 +37,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <>
       <p className="onboarding-eyebrow">Welcome</p>
-      <h2 className="onboarding-title">The Quest for Health</h2>
+      <h2 className="onboarding-title">Health Quest</h2>
       <p className="onboarding-body">
         Your real runs and walks, gently reinterpreted as an RPG. A few quick steps and you're set — connecting
         Garmin is required, but the rest can be finished later from your dashboard.
@@ -141,7 +142,7 @@ function GarminStep({ accessToken, onNext }: { accessToken: string; onNext: () =
       <p className="onboarding-eyebrow">Step 1 of 3</p>
       <h2 className="onboarding-title">Connect Garmin</h2>
       <p className="onboarding-body">
-        The Quest for Health runs on your real Garmin activity data — there's no getting started without connecting
+        Health Quest runs on your real Garmin activity data — there's no getting started without connecting
         it first.
       </p>
       <form onSubmit={handleConnect} className="form-card">
@@ -249,7 +250,7 @@ function GoalStep({ accessToken, onNext, onSkip }: { accessToken: string; onNext
   return (
     <>
       <p className="onboarding-eyebrow">Step 3 of 3</p>
-      <h2 className="onboarding-title">Choose Your Quest</h2>
+      <h2 className="onboarding-title">Choose Your Character Type</h2>
       <p className="onboarding-body">This shapes how future activities score XP — you can switch it later anytime.</p>
       <div className="onboarding-goals">
         {(goals ?? []).map((goal) => (
@@ -292,7 +293,7 @@ function DoneStep({ onFinish, finishing }: { onFinish: () => void; finishing: bo
   )
 }
 
-function OnboardingWizard({ accessToken, onComplete }: OnboardingWizardProps) {
+function OnboardingWizard({ accessToken, onComplete, onLogout }: OnboardingWizardProps) {
   const [step, setStep] = useState<Step>('welcome')
   const [finishing, setFinishing] = useState(false)
   const stepIndex = STEP_ORDER.indexOf(step)
@@ -315,7 +316,12 @@ function OnboardingWizard({ accessToken, onComplete }: OnboardingWizardProps) {
   return (
     <div className="onboarding-overlay">
       <div className="card onboarding-card">
-        {step !== 'done' && <ProgressDots stepIndex={stepIndex} />}
+        <div className="onboarding-topbar">
+          {step !== 'done' ? <ProgressDots stepIndex={stepIndex} /> : <span />}
+          <button type="button" className="onboarding-logout" onClick={onLogout}>
+            Log out
+          </button>
+        </div>
         {step === 'welcome' && <WelcomeStep onNext={advance} />}
         {step === 'garmin' && <GarminStep accessToken={accessToken} onNext={advance} />}
         {step === 'home-base' && <HomeBaseStep accessToken={accessToken} onNext={advance} onSkip={advance} />}

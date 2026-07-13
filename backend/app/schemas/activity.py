@@ -4,6 +4,11 @@ from datetime import datetime
 from pydantic import BaseModel
 
 
+class LatLon(BaseModel):
+    lat: float
+    lon: float
+
+
 class XPBreakdownResponse(BaseModel):
     base_xp: float
     multipliers: dict[str, float]
@@ -46,3 +51,4 @@ class ActivitySummaryResponse(BaseModel):
     heat_index_c: float | None
     main_xp: XPBreakdownResponse | None
     skill_xp: list[SkillXPResponse]
+    polyline: list[LatLon]
